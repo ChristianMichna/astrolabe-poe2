@@ -180,7 +180,7 @@ jobs:
         # The packaging filter drops all *.zst and takes the icon sheets back in; without them the
         # tree shows no node pictures (F-12), so a filter that stopped working must fail the build.
         run: |
-          dir=$(ls -d release/win-unpacked/resources/pob/PathOfBuilding-PoE2/src/TreeData/*/ | sort -V | tail -n 1)
+          dir=$(ls -d release/win-unpacked/resources/pob/PathOfBuilding-PoE2/src/TreeData/[0-9]*_[0-9]*/ | sort -V | tail -n 1)
           echo "tree data folder: $dir"
           ls "$dir"skills_*_BC1.dds.zst
           test "$(ls "$dir"skills_*_BC1.dds.zst | wc -l)" -ge 1
