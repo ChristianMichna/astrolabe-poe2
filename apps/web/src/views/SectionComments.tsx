@@ -138,7 +138,7 @@ const EFFECT_HINT: Record<"rewrite" | "remeasure" | "rebuild", string | undefine
   rewrite: undefined,
   remeasure: "Claude plans this again and the simulator and prices measure it again.",
   rebuild:
-    "Claude changes this choice, Path of Building measures everything from here on again, and the crafting, texts and costs that depend on it are rewritten. You will see a before/after comparison.",
+    "Claude changes this choice (for the tree: it turns your comment into nodes the search must take or avoid), Path of Building measures everything from here on again, and the crafting, texts and costs that depend on it are rewritten. You will see a before/after comparison.",
 };
 
 /** Banner above the guide: tells the player when comments wait and how to hand them to Claude. */

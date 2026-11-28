@@ -482,3 +482,122 @@ describe("comments on a build choice", () => {
     expect(texts).toContain("Second.");
   });
 });
+
+/** The tree is made by a server step; a comment on it adds a steer task before the tree is built. */
+const treePipeline: Pipeline = {
+  id: "tree-comment-test",
+  plan: (ctx) => {
+    const task = (key: string) =>
+      ({
+        kind: "task",
+        spec: defineTask<{ text: string }>({
+          key,
+          type: key,
+          instructions: `Write ${key}.`,
+          promptVersion: "t",
+          context: { comments: [...(ctx.commentsOn?.("S5.steer") ?? [])] },
+          schema: z.object({ text: z.string() }),
+          allowedTools: [],
+        }),
+      }) as const;
+    if (ctx.result("S5.gems") === undefined) return task("S5.gems");
+    if ((ctx.commentsOn?.("S5.steer") ?? []).length > 0 && ctx.result("S5.steer") === undefined) {
+      return task("S5.steer");
+    }
+    if (ctx.result("S5.tree") === undefined) {
+      return {
+        kind: "server",
+        key: "S5.tree",
+        type: "S5.tree",
+        run: async () => ({ steered: ctx.result("S5.steer") ?? null }),
+      };
+    }
+    if (ctx.result("S9.summary") === undefined) return task("S9.summary");
+    if (ctx.result("S10.report") === undefined) {
+      return { kind: "server", key: "S10.report", type: "S10", run: async () => ({ ok: true }) };
+    }
+    if (ctx.result("S11.guide") === undefined) {
+      return {
+        kind: "server",
+        key: "S11.guide",
+        type: "S11",
+        run: async () => ({ metadata: { guideId: ctx.run.runId, revision: 0 } }),
+      };
+    }
+    return { kind: "done" };
+  },
+};
+
+describe("comments on the passive tree", () => {
+  it("asks Claude for tree constraints, builds the tree again with them and keeps the comment", async () => {
+    const store = new RunStore(":memory:");
+    const engine = new ForgeEngine({
+      store,
+      catalog: fixtureCatalog(),
+      calc: new PersistedCalc(new CalcFake({ dataReleaseId: RELEASE }), store),
+      config: CONFIG,
+      pipelines: [treePipeline],
+      calcProfiles: CONFIG.pipelines.poc.calcProfiles,
+    });
+    const { runId, sessionCode } = await engine.createRun(REQUEST, "tree-comment-test");
+    let step: ForgeStep = (await engine.attach(sessionCode)).next;
+    for (const text of ["gems 1", "summary 1"]) {
+      const t = task(step);
+      const out = await engine.submit({ runId, taskId: t.taskId, attempt: 1, payload: { text } });
+      if (out.result !== "accepted") throw new Error("rejected");
+      step = out.next;
+    }
+    expect(step.kind).toBe("done");
+    // The tree can be commented on before any comment exists.
+    expect(
+      buildCommentsView(runId, store.findRunByGuideId(runId)).sections.find(
+        (s) => s.key === "S5.steer",
+      ),
+    ).toMatchObject({ effect: "rebuild", label: "Passive tree" });
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "t1",
+      section: "S5.steer",
+      text: "Take the life nodes on the left.",
+    });
+    const steer = task(await engine.next(runId));
+    expect(steer.type).toBe("S5.steer");
+    expect(steer.feedback).toEqual([expect.objectContaining({ commentId: "t1" })]);
+    let out = await engine.submit({
+      runId,
+      taskId: steer.taskId,
+      attempt: 1,
+      payload: { text: "constraints" },
+    });
+    if (out.result !== "accepted") throw new Error("rejected");
+    // The tree is built again with the constraints, then the text built on it is written again.
+    const summary = task(out.next);
+    expect(summary.type).toBe("S9.summary");
+    expect(store.findRunByGuideId(runId)?.results["S5.tree"]?.value).toEqual({
+      steered: { text: "constraints" },
+    });
+    expect(store.findRunByGuideId(runId)?.results["S5.gems"]?.value).toEqual({ text: "gems 1" });
+    out = await engine.submit({
+      runId,
+      taskId: summary.taskId,
+      attempt: 1,
+      payload: { text: "summary 2" },
+    });
+    expect(out.next.kind).toBe("done");
+    expect(buildCommentsView(runId, store.findRunByGuideId(runId)).comments).toEqual([
+      expect.objectContaining({ commentId: "t1", status: "applied" }),
+    ]);
+    // A second comment on a tree that already has constraints asks for them again.
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "t2",
+      section: "S5.steer",
+      text: "Also avoid the crit nodes.",
+    });
+    const again = task(await engine.next(runId));
+    expect(again.type).toBe("S5.steer");
+    expect(again.feedback).toEqual([
+      expect.objectContaining({ commentId: "t2", previous: { text: "constraints" } }),
+    ]);
+  });
+});

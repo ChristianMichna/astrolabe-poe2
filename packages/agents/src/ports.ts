@@ -103,6 +103,15 @@ export interface TargetRequest {
   passivePoints: number;
   /** Points of the ascendancy; without them the target gets no ascendancy nodes. */
   ascendancyPoints?: number;
+  /** The player's steering of the tree (a comment on it); the search keeps to it. */
+  steer?: TreeSteerNodes;
+}
+
+/** Nodes the player's comment on the tree asks for, avoids or wants looked at first. */
+export interface TreeSteerNodes {
+  required: readonly string[];
+  forbidden: readonly string[];
+  priority: readonly string[];
 }
 
 /** Result of the target tree: the build with its tree and a measurement per calc profile. */

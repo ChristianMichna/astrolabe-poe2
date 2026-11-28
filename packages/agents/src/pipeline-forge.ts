@@ -15,7 +15,10 @@ import {
   gemTask,
   S5_GEMS_KEY,
   type S5Config,
+  S5_STEER_KEY,
   S5_TARGET_KEY,
+  steerTask,
+  TreeSteer,
   S5_TREE_KEY,
   targetSize,
   targetStep,
@@ -260,11 +263,31 @@ function planTarget(
     };
   }
   const setup = setupParsed.data;
+  // A comment on the tree makes Claude turn it into node constraints before the search runs.
+  const playerComments = ctx.commentsOn?.(S5_STEER_KEY) ?? [];
+  let steer: TreeSteer | undefined;
+  if (playerComments.length > 0) {
+    const steerResult = ctx.result(S5_STEER_KEY);
+    if (steerResult === undefined) {
+      return { kind: "task", spec: steerTask(ctx, config, chosen, setup, playerComments) };
+    }
+    const steerParsed = TreeSteer.safeParse(steerResult);
+    if (!steerParsed.success) {
+      return {
+        kind: "blocked",
+        error: {
+          code: "invalid_tree_steer",
+          message: "The stored S5 tree constraints are unreadable. Redo stage S5.",
+        },
+      };
+    }
+    steer = steerParsed.data;
+  }
   const tree = ctx.result(S5_TREE_KEY);
-  if (tree === undefined) return treeJob(ctx, s5, profile, chosen, evaluation, setup);
+  if (tree === undefined) return treeJob(ctx, s5, profile, chosen, evaluation, setup, steer);
   const targetResult = ctx.result(S5_TARGET_KEY);
   if (targetResult === undefined) {
-    return targetStep(chosen, tree as { state: unknown; calcs: unknown }, setup);
+    return targetStep(chosen, tree as { state: unknown; calcs: unknown }, setup, steer);
   }
   return planProgression(ctx, config, profile, chosen, targetResult);
 }

@@ -21,6 +21,8 @@ import {
   type ProgressionPort,
   type SkeletonPort,
   type TargetPort,
+  S5_STEER_KEY,
+  S5_TREE_KEY,
 } from "@astrolabe/agents";
 import type { CalcPort } from "../ports/calc.js";
 import type { CatalogPort } from "../ports/catalog.js";
@@ -697,6 +699,12 @@ export class ForgeEngine {
         }
         return undefined;
       },
+      commentsOn: (section) =>
+        r.interventions.flatMap((e) =>
+          e.intervention.kind === "comment" && e.intervention.section === section
+            ? [e.intervention.text]
+            : [],
+        ),
       result: (key) => r.results[key]?.value,
     };
   }
@@ -773,7 +781,11 @@ export class ForgeEngine {
     const earlier = r.interventions.findLast(
       (e) => e.intervention.kind === "comment" && e.intervention.section === comment.section,
     )?.intervention;
-    if (stored === undefined && earlier === undefined) {
+    // The tree is made by the optimiser: it can be commented on once it exists, before any comment.
+    const treeSteerable =
+      comment.section === S5_STEER_KEY &&
+      (r.results[S5_TREE_KEY] !== undefined || r.revisions.length > 0);
+    if (stored === undefined && earlier === undefined && !treeSteerable) {
       throw new ForgeError("invalid_intervention", `The guide has no section ${comment.section}.`);
     }
     const previous = stored?.value ?? (earlier?.kind === "comment" ? earlier.previous : undefined);
@@ -803,8 +815,8 @@ export class ForgeEngine {
     }
     if (effect.effect === "rebuild") {
       // A choice made again: what is built on it (later stages, plans, texts) is made again too.
-      // A choice that is already open again (an earlier comment) has nothing left to drop.
-      if (stored !== undefined) this.dropFrom(r, stored.type);
+      // A choice that is already open again drops from its stage on once more (nothing to lose).
+      this.dropFrom(r, stored?.type ?? effect.from);
     } else {
       // The section is redone, with what is computed from it; validation and publishing run again.
       const dropped = new Set(effect.drop);

@@ -347,8 +347,16 @@ abgeleitet. Importierte Guides haben keinen Lauf und sind nicht kommentierbar. A
 Crafting-Strategie (`S8.craft-<Stufe>-<Slot>`) ist kommentierbar: Die Engine verwirft sie samt
 `S8.plan` (Simulator und Preise rechnen neu) und dem Plan-Text `S9.craft-…` (`commentDependents` in
 `packages/agents`); `GuideSectionInfo.effect` (`rewrite`/`remeasure`/`rebuild`) sagt es der App.
-Baustellen-Entscheidungen (`S5.gems`, `S6.notes`, `S7.gear-<tier>`) haben den Effekt `rebuild`:
+Baustellen-Entscheidungen (`S5.gems`, `S6.notes`, `S7.gear-<tier>`, `S5.steer`) haben den Effekt `rebuild`:
 Die Engine verwirft die Aufgabe per `dropFrom` samt allem Nachfolgenden (PoB misst alles ab dieser
 Stufe neu, Crafting, Texte und Kosten entstehen über die normale Schleife neu). Der Kommentar geht
 nur an die Aufgabe des Abschnitts. `GET /api/guides/:id/view?revision=n` liefert eine frühere
 Fassung; die App rechnet daraus den Vorher-Nachher-Vergleich aus den gespeicherten PoB-Ergebnissen.
+
+Kommentar auf den Passive Tree (`S5.steer`): Den Tree wählt der Optimierer, nicht Claude. Der
+Abschnitt existiert, sobald `S5.tree` da ist; der Kommentar verwirft `S5.tree` und alles danach.
+Die Pipeline fügt dann die Claude-Aufgabe `S5.steer` ein (Kommentare als `playerComments` im
+Kontext, bleiben auch nach neuer Gem-Wahl erhalten), die ihn in Knoten-Vorgaben übersetzt
+(`requiredNodeIds`, `forbiddenNodeIds`, `priorityNodeIds`, nur Hauptbaum, Katalog-Gate G1). Der
+Baum-Job hält sich daran (`TargetRequest.steer`), PoB misst neu; die Begründung kommt in
+`TargetBuild.rationale`.
