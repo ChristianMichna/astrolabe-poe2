@@ -12,14 +12,15 @@ import { IsoDateTime } from "../common/version.js";
  * Key of one task result the guide is made of: a written section ("S9.mechanics", "S9.stage-act-1")
  * or a crafting strategy ("S8.craft-<tier>-<slot>"), which the simulator measures again. Keys are
  * the pipeline's own; the list of keys a guide can be commented on comes from the server
- * (`GuideCommentsView.sections`), the app never builds them itself.
+ * (`GuideCommentsView.sections`); the app finds a part by the key helpers below, which a server
+ * test holds equal to the pipeline's keys.
  */
 export const GuideSectionKey = z
   .string()
   .min(3)
   .max(120)
   .regex(
-    /^(?:S9|S8\.craft)[.-][a-z0-9][a-z0-9.-]*$/,
+    /^(?:S9\.|S8\.craft-)[a-z0-9][a-z0-9.-]*$/,
     "expected a guide section key like S9.mechanics or S8.craft-tier-slot",
   );
 export type GuideSectionKey = z.infer<typeof GuideSectionKey>;

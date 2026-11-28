@@ -620,7 +620,7 @@
                   "type": "string",
                   "minLength": 3,
                   "maxLength": 120,
-                  "pattern": "^(?:S9|S8\\.craft)[.-][a-z0-9][a-z0-9.-]*$"
+                  "pattern": "^(?:S9\\.|S8\\.craft-)[a-z0-9][a-z0-9.-]*$"
                 },
                 "text": {
                   "type": "string",
