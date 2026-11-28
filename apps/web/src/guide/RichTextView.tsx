@@ -6,7 +6,7 @@ const ONE_DIGIT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 const TWO_DIGITS = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 /** Digits follow the size of the value: 1,150 and 61.4 and 0.35, not 1,149.87. */
-function formatNumber(value: number): string {
+export function formatNumber(value: number): string {
   const size = Math.abs(value);
   return (size >= 100 ? WHOLE : size >= 10 ? ONE_DIGIT : TWO_DIGITS).format(value);
 }
