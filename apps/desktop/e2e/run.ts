@@ -48,6 +48,8 @@ const env = (name: string): string => {
     throw new Error(`environment variable ${name} is not set`);
   return value;
 };
+/** The app must end this soon after its window closed, whatever is still connected. */
+const QUIT_LIMIT_MS = 20_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const results: { step: string; ok: boolean; seconds: number; error?: string }[] = [];
@@ -485,9 +487,12 @@ async function main(): Promise<void> {
     const dir = env("E2E_GUIDE_DATA_DIR");
     if (!existsSync(join(dir, "manifest.json"))) throw new Error(`no data release in ${dir}`);
     app = spawn(join(installDir, "Astrolabe.exe"), [`--remote-debugging-port=${DEBUG_PORT}`], {
-      stdio: "ignore",
+      stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, ASTROLABE_DATA_RELEASE: dir },
     });
+    const guideLog = createWriteStream(join(outDir, "app-guide.log"));
+    app.stdout?.pipe(guideLog);
+    app.stderr?.pipe(guideLog);
     await until("the health check", 300_000, async () => {
       const health = (await api(token, "/api/health").catch(() => undefined)) as
         { dataReleaseId?: string } | undefined;
@@ -543,6 +548,67 @@ async function main(): Promise<void> {
     }
     await writeFile(join(outDir, "guide.build"), text);
   });
+
+  await step(
+    "Quitting with a client connected ends the app in time, the next start works",
+    async () => {
+      // A person closes the window while Claude (or the page) still holds a connection to the local
+      // server. Windows asks the window to close, like the installer does before it relaunches the
+      // app. The process must end quickly: a process that lingers keeps the single-instance lock and
+      // every later start only talks to it.
+      const first = app;
+      if (first?.pid === undefined) throw new Error("the app is not running");
+      const gone = new Promise<void>((done) => first.once("exit", () => done()));
+      const stream = new AbortController();
+      const held = await fetch(`${SERVER}/api/runs/${run}/events`, {
+        headers: { authorization: `Bearer ${token}` },
+        signal: stream.signal,
+      });
+      if (!held.ok) throw new Error(`the event stream answered ${held.status}`);
+      void held.body
+        ?.getReader()
+        .read()
+        .catch(() => undefined);
+      await browser?.close().catch(() => undefined);
+      browser = undefined;
+      page = undefined;
+      const closedAt = Date.now();
+      spawnSync("taskkill", ["/PID", String(first.pid)], { stdio: "ignore" });
+      const starts: ChildProcess[] = [];
+      for (const waitMs of [500, 2000]) {
+        await sleep(waitMs);
+        starts.push(spawn(join(installDir, "Astrolabe.exe"), [], { stdio: "ignore" }));
+      }
+      await Promise.race([gone, sleep(QUIT_LIMIT_MS)]);
+      stream.abort();
+      const took = (Date.now() - closedAt) / 1000;
+      if (first.exitCode === null) {
+        throw new Error(
+          `the app did not quit within ${QUIT_LIMIT_MS / 1000} seconds after the window closed`,
+        );
+      }
+      console.log(`the app quit ${took.toFixed(1)} seconds after the window closed`);
+      await sleep(3000);
+      for (const start of starts) killTree(start);
+      const crashed = ["app.log", "app-guide.log"].filter((name) => {
+        const file = join(outDir, name);
+        return (
+          existsSync(file) &&
+          /uncaught exception|Object has been destroyed/i.test(readFileSync(file, "utf8"))
+        );
+      });
+      if (crashed.length > 0) throw new Error(`the app logged a crash in ${crashed.join(", ")}`);
+      // The next start must get the single-instance lock and answer.
+      await sleep(2000);
+      app = spawn(join(installDir, "Astrolabe.exe"), [`--remote-debugging-port=${DEBUG_PORT}`], {
+        stdio: "ignore",
+      });
+      await until("the health check after the restart", 180_000, async () => {
+        if (app?.exitCode !== null) throw new Error(`app exited with ${app?.exitCode}`);
+        return (await api(token, "/api/health").catch(() => undefined)) as unknown;
+      });
+    },
+  );
 
   await shot("03-end");
 }

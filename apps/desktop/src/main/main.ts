@@ -18,6 +18,7 @@ import { IPC } from "../shared/bridge.js";
 import { createAppProtocolHandler } from "./app-protocol.js";
 import { loadDesktopConfig, type DesktopConfig } from "./config.js";
 import { createHandlers } from "./ipc-handlers.js";
+import { focusWindow, showWindow } from "./window-guard.js";
 import { startDataSync, type DataSyncController } from "./data-sync.js";
 import { findDataRelease, knownReleaseIds, resolveAppDirs } from "./resources.js";
 import {
@@ -28,11 +29,14 @@ import {
   isDataSyncUrl,
   isTrustedSender,
 } from "./security.js";
+import { stopWithin } from "./shutdown.js";
 import { startServices, type Services } from "./services.js";
 import { StatusStore } from "./status.js";
 import { startUpdates, type UpdateController } from "./updater.js";
 
 const logger = createStderrLogger("desktop");
+/** The server and the calc pool get this long to stop when the app quits; then the app ends anyway. */
+const SHUTDOWN_LIMIT_MS = 10_000;
 /** Hosts a citation link may open; empty (nothing opens) until the configuration is loaded. */
 let citationHosts: readonly string[] = [];
 
@@ -63,14 +67,22 @@ let dataSync: DataSyncController | undefined;
 /** Repository root when running unpackaged (dist/main.cjs → apps/desktop → repo). */
 const repoRoot = join(__dirname, "..", "..", "..");
 
+// Electron's own dialog shows nothing in a log; this one leaves a line the self-test looks for.
+process.on("uncaughtException", (error) => {
+  logger.error("uncaught exception in the main process", { error });
+  dialog.showErrorBox("Astrolabe: unexpected error", error.stack ?? error.message);
+});
+
 if (!app.requestSingleInstanceLock()) {
   // A second instance would fight for the port; hand over to the first one.
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (mainWindow === undefined) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    // The first instance may be shutting down with its window already closed.
+    logger.info("second start while the app runs", {
+      windowOpen: mainWindow !== undefined && !mainWindow.isDestroyed(),
+    });
+    focusWindow(mainWindow);
   });
   app.on("web-contents-created", (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
@@ -102,10 +114,19 @@ if (!app.requestSingleInstanceLock()) {
     // Let the server and SQLite close cleanly before the process ends.
     event.preventDefault();
     stopped = true;
-    void services
-      .stop()
-      .catch((error: unknown) => logger.error("server stop failed", { error }))
-      .finally(() => app.quit());
+    void stopWithin(
+      () => services?.stop() ?? Promise.resolve(),
+      SHUTDOWN_LIMIT_MS,
+      (error) => logger.error("server stop failed", { error }),
+    ).then((outcome) => {
+      if (outcome === "timed-out") {
+        // Leave now: a process that lingers without a window blocks every later start.
+        logger.error("server did not stop in time, ending the app", { limitMs: SHUTDOWN_LIMIT_MS });
+        app.exit(0);
+      } else {
+        app.quit();
+      }
+    });
   });
   void app.whenReady().then(boot).catch(fatal);
 }
@@ -166,13 +187,12 @@ async function boot(): Promise<void> {
   });
   registerIpc(handlers, status);
 
-  mainWindow = createWindow(config);
+  const win = createWindow(config);
+  mainWindow = win;
   status.subscribe((next) => {
-    if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPC.statusChanged, next);
-    }
+    if (!win.isDestroyed()) win.webContents.send(IPC.statusChanged, next);
   });
-  await mainWindow.loadURL(APP_URL);
+  await win.loadURL(APP_URL);
 
   // Server start comes after the window so the person sees progress or the error, not nothing.
   try {
@@ -306,7 +326,13 @@ function createWindow(config: DesktopConfig): BrowserWindow {
       devTools: !app.isPackaged,
     },
   });
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => showWindow(win));
+  win.once("closed", () => {
+    if (mainWindow === win) mainWindow = undefined;
+  });
+  win.once("closed", () => {
+    if (mainWindow === win) mainWindow = undefined;
+  });
   return win;
 }
 

@@ -107,7 +107,8 @@ const BUILD_FILE_NAME_MAX_CHARS = 80;
 
 /** Local API + MCP endpoint. Never listens on anything but 127.0.0.1. */
 export function createApp(options: AppOptions): FastifyInstance {
-  const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT_BYTES });
+  // forceCloseConnections: event streams and long polls end when the app quits instead of holding it.
+  const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT_BYTES, forceCloseConnections: true });
   const { engine, logger } = options;
   /** The run behind a guide; a guide without one (imported file) cannot be commented on. */
   const commentRun = (guideId: string): RunRecord | undefined => options.findRunByGuide?.(guideId);
