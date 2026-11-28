@@ -5,6 +5,7 @@ import { ItemTooltip, Panel, Tabs } from "@astrolabe/ui";
 import { Bullets, EntityName } from "./GuideText";
 import { RichTextView } from "../guide/RichTextView";
 import {
+  gearTierSectionKey,
   slotSectionKey,
   type GuideGearEntry,
   type GuideItemCard,
@@ -144,6 +145,7 @@ export function GearSection({ view }: { view: GuideView }) {
                 </p>
               )}
               <TierGear entries={view.gear.filter((g) => g.budgetTier === id)} view={view} />
+              <SectionComments sectionKey={gearTierSectionKey(id)} label={`${id} gear choice`} />
             </>
           ),
         }))}

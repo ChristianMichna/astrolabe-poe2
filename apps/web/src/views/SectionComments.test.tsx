@@ -97,18 +97,14 @@ describe("section comments", () => {
   it("says that a crafting strategy comment is measured again", async () => {
     stubServer({
       ...empty,
-      sections: [{ key: "S8.craft-a-ring", label: "Crafting strategy", recalculates: true }],
+      sections: [{ key: "S8.craft-a-ring", label: "Crafting strategy", effect: "remeasure" }],
     });
     render(
       <GuideCommentsProvider guideId="g1">
-        <SectionComments
-          sectionKey="S8.craft-a-ring"
-          label="Ring strategy"
-          hint="The simulator measures it again."
-        />
+        <SectionComments sectionKey="S8.craft-a-ring" label="Ring strategy" />
       </GuideCommentsProvider>,
     );
     fireEvent.click(await screen.findByRole("button", { name: /Comment on Ring strategy/ }));
-    expect(screen.getByText("The simulator measures it again.")).toBeTruthy();
+    expect(screen.getByText(/the simulator and prices measure it again/)).toBeTruthy();
   });
 });

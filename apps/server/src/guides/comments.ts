@@ -4,7 +4,7 @@ import {
   type GuideCommentStatus,
   type GuideSectionInfo,
 } from "@astrolabe/contracts/guide";
-import { recalculatesOnComment } from "@astrolabe/agents";
+import { commentEffect } from "@astrolabe/agents";
 import type { RunRecord } from "../engine/run-record.js";
 
 /** Names of the prose sections Claude writes (stage S9); other keys are named from their slug. */
@@ -15,6 +15,8 @@ const SECTION_LABELS: Readonly<Record<string, string>> = {
   "S9.atlas": "Endgame",
   "S9.variants": "Variants",
   "S9.faq": "Troubleshooting",
+  "S5.gems": "Skill setup",
+  "S6.notes": "Stage notes",
 };
 
 /** Prefixes of the detail tasks of S9 (one per stage, gear tier, gear slot and crafting plan). */
@@ -25,6 +27,8 @@ const DETAIL_PREFIXES: readonly (readonly [string, string])[] = [
   ["S9.craft-", "Crafting plan"],
   // A crafting strategy: Claude plans it again and the simulator measures it again.
   ["S8.craft-", "Crafting strategy"],
+  // The gear choice of a budget tier: everything built on it is calculated again.
+  ["S7.gear-", "Gear choice"],
 ];
 
 /** Readable name of a section key; the slug words stay as the pipeline wrote them. */
@@ -44,6 +48,8 @@ function statusOf(run: RunRecord, section: string, at: string): GuideCommentStat
     return run.phase === "done" ? "applied" : "working";
   }
   if (run.phase === "failed") return "failed";
+  // A finished run never hands the comment over: the section is gone (a redone choice dropped it).
+  if (run.phase === "done") return "failed";
   return run.current?.key === section ? "working" : "queued";
 }
 
@@ -76,11 +82,19 @@ export function buildCommentsView(guideId: string, run: RunRecord | undefined): 
   );
   // A section being redone has no stored result for a while; its comments keep it listed.
   const keys = new Set([
-    ...Object.keys(run.results).filter((k) => k.startsWith("S9.") || k.startsWith("S8.craft-")),
-    ...comments.map((c) => c.section),
+    ...Object.keys(run.results).filter((k) => commentEffect(k) !== undefined),
+    ...comments.filter((c) => c.status !== "failed").map((c) => c.section),
   ]);
-  const sections: GuideSectionInfo[] = [...keys]
-    .sort()
-    .map((key) => ({ key, label: sectionLabel(key), recalculates: recalculatesOnComment(key) }));
-  return GuideCommentsView.parse({ guideId, runId: run.runId, sections, comments });
+  const sections: GuideSectionInfo[] = [...keys].sort().map((key) => ({
+    key,
+    label: sectionLabel(key),
+    effect: commentEffect(key)?.effect ?? "rewrite",
+  }));
+  return GuideCommentsView.parse({
+    guideId,
+    runId: run.runId,
+    sections,
+    comments,
+    revisions: run.revisions.length,
+  });
 }

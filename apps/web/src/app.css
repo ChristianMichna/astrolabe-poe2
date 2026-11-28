@@ -1221,3 +1221,21 @@ code {
   color: var(--ef-color-text-faint);
   font-size: var(--ef-text-xs);
 }
+
+.revision-diff__stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.revision-diff__stats :is(th, td) {
+  padding: var(--ef-space-2) var(--ef-space-3);
+  text-align: left;
+  border-bottom: var(--ef-hairline) solid var(--ef-color-line);
+}
+
+.revision-diff__list {
+  margin: var(--ef-space-3) 0 0;
+  padding-left: var(--ef-space-5);
+  color: var(--ef-color-text-muted);
+}

@@ -33,6 +33,16 @@ interface CommentsApi {
 
 const CommentsContext = createContext<CommentsApi | undefined>(undefined);
 
+/** Number of earlier revisions of the guide and whether comments still wait, once loaded. */
+export function useCommentRevisions(): { revisions: number; open: boolean } | undefined {
+  const api = useContext(CommentsContext);
+  if (api === undefined || api.state.status !== "ready") return undefined;
+  return {
+    revisions: api.state.view.revisions,
+    open: api.state.view.comments.some(isOpen),
+  };
+}
+
 const isOpen = (c: GuideComment): boolean => c.status === "queued" || c.status === "working";
 
 /** Loads the comments of a guide once and keeps them current while Claude works on them. */
@@ -123,6 +133,14 @@ const STATUS_TONE = {
   failed: "danger",
 } as const;
 
+/** What a comment sets off beyond rewriting text, by effect (rewrite needs no hint). */
+const EFFECT_HINT: Record<"rewrite" | "remeasure" | "rebuild", string | undefined> = {
+  rewrite: undefined,
+  remeasure: "Claude plans this again and the simulator and prices measure it again.",
+  rebuild:
+    "Claude changes this choice, Path of Building measures everything from here on again, and the crafting, texts and costs that depend on it are rewritten. You will see a before/after comparison.",
+};
+
 /** Banner above the guide: tells the player when comments wait and how to hand them to Claude. */
 export function CommentsBanner() {
   const api = useContext(CommentsContext);
@@ -192,12 +210,9 @@ export function CommentsBanner() {
 export function SectionComments({
   sectionKey,
   label,
-  hint,
 }: {
   sectionKey: GuideSectionKey;
   label: string;
-  /** Shown above the form: what the comment sets off beyond rewriting text. */
-  hint?: string;
 }) {
   const api = useContext(CommentsContext);
   const [editing, setEditing] = useState(false);
@@ -243,7 +258,7 @@ export function SectionComments({
             if (text.trim() !== "") submit();
           }}
         >
-          {info.recalculates && hint !== undefined ? <p>{hint}</p> : null}
+          {EFFECT_HINT[info.effect] !== undefined ? <p>{EFFECT_HINT[info.effect]}</p> : null}
           <label>
             What should change in “{label}”?
             <textarea

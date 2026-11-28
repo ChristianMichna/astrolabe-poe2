@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DataRelease } from "@astrolabe/contracts/catalog";
 import { CalcFake } from "../src/calc/calc-fake.js";
 import { ForgeEngine } from "../src/engine/forge-engine.js";
+import type { RunRecord } from "../src/engine/run-record.js";
 import { buildFileResolvers } from "../src/export/build-file-resolvers.js";
 import { createApp } from "../src/http/app.js";
 import { createMemoryLogger } from "../src/logger.js";
@@ -35,6 +36,7 @@ function app(
   catalogOverride?: CatalogPort,
   listGuideIds?: () => string[],
   calcOverride?: CalcPort,
+  findRunByGuide?: (id: string) => { revisions: unknown[] } | undefined,
 ) {
   const store = new RunStore(":memory:");
   const catalog = catalogOverride ?? fixtureCatalog();
@@ -58,6 +60,9 @@ function app(
     defaultPipelineId: "poc",
     accessToken: TOKEN,
     ...(findGuide === undefined ? {} : { findGuide }),
+    ...(findRunByGuide === undefined
+      ? {}
+      : { findRunByGuide: findRunByGuide as unknown as (id: string) => RunRecord | undefined }),
     ...(listGuideIds === undefined ? {} : { listGuideIds, guideOrigin: () => "imported" as const }),
   });
 }
@@ -274,6 +279,37 @@ describe("guide routes", () => {
         .statusCode,
     ).toBe(401);
     expect((await get("/api/guides", app(undefined))).statusCode).toBe(400);
+  });
+});
+
+describe("GET /api/guides/:guideId/view?revision", () => {
+  it("returns an earlier revision of the run's guide and says when there is none", async () => {
+    const older = {
+      ...(stored as object),
+      metadata: { ...(stored as { metadata: object }).metadata, revision: 0 },
+    };
+    const a = app(
+      () => stored,
+      undefined,
+      undefined,
+      undefined,
+      () => ({ revisions: [older] }),
+    );
+    const ok = await a.inject({
+      method: "GET",
+      url: `/api/guides/${GUIDE_ID}/view?revision=0`,
+      headers,
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json<{ guide: { metadata: { revision: number } } }>().guide.metadata.revision).toBe(
+      0,
+    );
+    const missing = await a.inject({
+      method: "GET",
+      url: `/api/guides/${GUIDE_ID}/view?revision=3`,
+      headers,
+    });
+    expect(missing.statusCode).toBe(404);
   });
 });
 

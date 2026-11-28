@@ -98,6 +98,9 @@ const CreateRunBody = z.object({
 const RunParams = z.object({ runId: z.string().min(1) });
 /** One file name inside assets/items: no path separators, `..` or other suffixes. */
 const ItemImageParams = z.object({ file: z.string().regex(/^[\w-]+\.png$/) });
+/** `?revision=n`: the guide as it stood before the comments that made it a later revision. */
+const GuideViewQuery = z.object({ revision: z.coerce.number().int().min(0).optional() });
+
 const GuideParams = z.object({ guideId: z.string().min(1).max(200) });
 /** Name inside the exported `.build` file. */
 const BUILD_FILE_NAME_MAX_CHARS = 80;
@@ -337,8 +340,20 @@ export function createApp(options: AppOptions): FastifyInstance {
     if (options.findGuide === undefined) {
       throw new ForgeError("invalid_request", "Reading guides needs the run store.");
     }
-    const stored = options.findGuide(guideId);
-    if (stored === undefined) throw new ForgeError("unknown_run", `No stored guide ${guideId}.`);
+    const { revision } = GuideViewQuery.parse(request.query);
+    // An earlier revision (before a comment was worked off) comes from the run that made the guide.
+    const stored =
+      revision === undefined
+        ? options.findGuide(guideId)
+        : commentRun(guideId)?.revisions[revision];
+    if (stored === undefined) {
+      throw new ForgeError(
+        "unknown_run",
+        revision === undefined
+          ? `No stored guide ${guideId}.`
+          : `Guide ${guideId} has no revision ${String(revision)}.`,
+      );
+    }
     const guide = PublishedGuide.safeParse(stored);
     if (!guide.success) {
       throw new ForgeError("invalid_request", `Stored guide ${guideId} is not a valid guide.`, {
