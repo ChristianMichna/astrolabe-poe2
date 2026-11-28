@@ -1,0 +1,8 @@
+{
+  "$comment": "Research for guides (ADR-0006, product owner decision 28.11.2026: Claude researches with the web search of the player's Claude Desktop; the app fetches no pages). Which sections are researched, how many findings a section needs, and the hosts a source link may point to. The hosts are a starting list of well-known build and game sites and can be changed by the product owner; a link to any other host is sent back. Counts are quality bars, not game facts.",
+  "version": "research-1",
+  "enabled": true,
+  "sections": ["summary", "mechanics", "playstyle", "atlas", "variants", "faq"],
+  "findings": { "min": 2, "max": 6 },
+  "hostAllowlist": ["maxroll.gg", "poe2db.tw", "pathofexile.com"]
+}

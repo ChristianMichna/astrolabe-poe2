@@ -546,6 +546,23 @@
                                 "type",
                                 "ref"
                               ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "source"
+                                },
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "id"
+                              ]
                             }
                           ]
                         }

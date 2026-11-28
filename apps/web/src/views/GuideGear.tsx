@@ -1,61 +1,16 @@
 import { useState } from "react";
+import { GearPaperDoll } from "./GearPaperDoll";
+import { rarityOf, toItemView } from "../guide/gear-item";
 import { ItemTooltip, Panel, Tabs } from "@astrolabe/ui";
-import type { ItemModView, ItemView } from "@astrolabe/ui";
 import { Bullets, EntityName } from "./GuideText";
 import { RichTextView } from "../guide/RichTextView";
-import type {
-  GuideGearEntry,
-  GuideItemCard,
-  GuideItemLine,
-  GuideView,
-} from "@astrolabe/contracts/guide";
+import type { GuideGearEntry, GuideItemCard, GuideView } from "@astrolabe/contracts/guide";
 
 /*
  * The gear plan of a guide: one tab per budget tier, one card per slot. Names and modifier texts
  * come from the server's catalog (`GuideView.gear`); an item the catalog does not know is shown
  * as unavailable, never as its id dressed up as a name.
  */
-
-const RARITY_BY_NAME = { normal: "normal", magic: "magic", rare: "rare" } as const;
-
-/** The look of the card; null when the release gives no (known) name for the rarity. */
-function rarityOf(card: GuideItemCard): ItemView["rarity"] | null {
-  if (card.kind === "unique") return "unique";
-  const key = card.rarityName?.toLowerCase() ?? "";
-  return key in RARITY_BY_NAME ? RARITY_BY_NAME[key as keyof typeof RARITY_BY_NAME] : null;
-}
-
-function modView(line: GuideItemLine, index: number, implicit: boolean): ItemModView {
-  return {
-    id: line.modId ?? `line-${index}`,
-    text: line.text ?? `Unknown modifier${line.modId === undefined ? "" : ` (${line.modId})`}`,
-    // Tiers are not shown on guide cards, so the prefix/suffix split stays invisible here.
-    kind: implicit ? "implicit" : line.generationType === "suffix" ? "suffix" : "prefix",
-    ...(line.tier === undefined ? {} : { tier: line.tier }),
-  };
-}
-
-export function toItemView(
-  card: GuideItemCard,
-  id: string,
-  dataRelease: string,
-  acquisition?: string,
-): ItemView {
-  return {
-    id,
-    // An unknown rarity gets the plain look and a visible note next to the card.
-    rarity: rarityOf(card) ?? "normal",
-    ...(card.name === undefined ? {} : { name: card.name }),
-    baseType: card.baseName,
-    itemClass: card.itemClass,
-    properties: [],
-    requirements: [],
-    implicits: card.implicits.map((l, i) => modView(l, i, true)),
-    explicits: card.explicits.map((l, i) => modView(l, i, false)),
-    ...(acquisition === undefined ? {} : { acquisition }),
-    provenance: { kind: "gamedata", dataRelease },
-  };
-}
 
 function RarityNote({ card }: { card: GuideItemCard }) {
   if (rarityOf(card) !== null) return null;
@@ -178,17 +133,27 @@ export function GearSection({ view }: { view: GuideView }) {
                   />
                 </p>
               )}
-              <div className="gear-grid">
-                {view.gear
-                  .filter((g) => g.budgetTier === id)
-                  .map((entry) => (
-                    <Slot key={entry.slot} entry={entry} view={view} />
-                  ))}
-              </div>
+              <TierGear entries={view.gear.filter((g) => g.budgetTier === id)} view={view} />
             </>
           ),
         }))}
       />
     </Panel>
+  );
+}
+
+function TierGear({ entries, view }: { entries: readonly GuideGearEntry[]; view: GuideView }) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const current = entries.find((e) => e.slot === picked) ?? entries[0];
+  return (
+    <>
+      <GearPaperDoll
+        entries={entries}
+        view={view}
+        selected={current?.slot ?? null}
+        onSelect={setPicked}
+      />
+      {current === undefined ? null : <Slot key={current.slot} entry={current} view={view} />}
+    </>
   );
 }

@@ -1,0 +1,146 @@
+{
+  "$comment": "Guide specification: the product owner's requirements for what a guide must be, kept in one versioned place. The server hands Claude only the items whose `appliesTo` matches the task it is working on (progressive disclosure), and adds the measured minimums of the quality rubric named in `rubric` so the text and the gate cannot drift apart. `appliesTo` entries are task keys, * matches any characters. Requirements come from the product owner (Christian, 27.11.2026); counts live in guide-rubric.json, never here.",
+  "version": "guide-spec-1",
+  "items": [
+    {
+      "id": "depth",
+      "title": "Depth of a good community guide",
+      "appliesTo": ["S9.*", "S10.quality-*"],
+      "text": "The guide is held to the level of detail of the best community build guides: it explains, in order, what to do, when and why, so a player can follow it without outside research. A statement that would fit any build (for example 'get resistances', 'use good gear') is not enough; say which, where it comes from and what it replaces."
+    },
+    {
+      "id": "numbers-by-reference",
+      "title": "Numbers only by reference",
+      "appliesTo": ["S9.*", "S6.notes", "S7.*", "S8.*"],
+      "text": "Never type a number that describes the game or the build (damage, life, resistances, costs, chances, levels). Reference a calculation result, or say plainly that a value is not available. A price or value you do not have is reported as not known, never estimated."
+    },
+    {
+      "id": "campaign-respecs",
+      "title": "Few respecs in the campaign",
+      "appliesTo": ["S6.notes", "S9.stage-*"],
+      "text": "A player should not have to rebuild the passive tree again and again while levelling. Describe each tree change as growth from the previous stage, and when a point has to be moved, say which one and why it cannot wait. Do not propose respecs the plan does not contain."
+    },
+    {
+      "id": "gear-display",
+      "title": "Gear is shown as items",
+      "appliesTo": ["S7.*", "S9.slot-*"],
+      "text": "The app draws the gear as item cards placed on a character and shows the full item on hover, so every slot names one concrete item (a unique, or a rare with a base and the wanted modifiers). Advice per slot says what to look for in order of priority, where to get it, which alternatives are acceptable and when to upgrade."
+    },
+    {
+      "id": "summary",
+      "title": "Introduction and summary",
+      "appliesTo": ["S9.summary"],
+      "text": "Open with what the build does and why it is fun, how it defends and how it changes from the campaign to the endgame, then list strengths and weaknesses honestly and close with a short summary.",
+      "rubric": [
+        "summary-intro-paragraphs",
+        "summary-intro-words",
+        "summary-strengths",
+        "summary-weaknesses",
+        "summary-closing",
+        "summary-concrete"
+      ]
+    },
+    {
+      "id": "mechanics",
+      "title": "How the build works",
+      "appliesTo": ["S9.mechanics"],
+      "text": "Explain the interactions between the key gems, items and passives with the reason each one is there, what every defence layer covers, and why the skill setups are built the way they are.",
+      "rubric": [
+        "mechanics-explanation",
+        "mechanics-interactions",
+        "mechanics-defences",
+        "mechanics-gem-setups",
+        "mechanics-reasons"
+      ]
+    },
+    {
+      "id": "playstyle",
+      "title": "How to play it",
+      "appliesTo": ["S9.playstyle"],
+      "text": "Give the rotation as ordered steps for clearing and for bossing, mapping and boss advice, tips and the mistakes players commonly make with this build.",
+      "rubric": [
+        "playstyle-rotation",
+        "playstyle-steps",
+        "playstyle-mapping",
+        "playstyle-bossing",
+        "playstyle-tips",
+        "playstyle-mistakes",
+        "playstyle-followable"
+      ]
+    },
+    {
+      "id": "atlas",
+      "title": "Endgame",
+      "appliesTo": ["S9.atlas"],
+      "text": "Describe the endgame as phases in the order the player goes through them, with waystone advice and the modifiers to avoid.",
+      "rubric": ["atlas-strategy", "atlas-phases", "atlas-waystones", "atlas-concrete"]
+    },
+    {
+      "id": "variants",
+      "title": "Variants",
+      "appliesTo": ["S9.variants"],
+      "text": "Each variant says what changes against the main build and why it fits its budget or mode.",
+      "rubric": ["variants-count", "variants-reasoned"]
+    },
+    {
+      "id": "faq",
+      "title": "Troubleshooting",
+      "appliesTo": ["S9.faq"],
+      "text": "Answer real problems of this build with steps the player can take.",
+      "rubric": ["faq-count", "faq-answer-words", "faq-actionable"]
+    },
+    {
+      "id": "stage",
+      "title": "A progression stage",
+      "appliesTo": ["S9.stage-*"],
+      "text": "Say concretely what the player does in this stage with skills, passives and gear, in what order the passives are taken, and what to check before moving on.",
+      "rubric": [
+        "stage-intro",
+        "stage-tree-notes",
+        "stage-checklist",
+        "stage-gear-notes",
+        "stage-concrete"
+      ]
+    },
+    {
+      "id": "tier",
+      "title": "A gear budget tier",
+      "appliesTo": ["S9.tier-*"],
+      "text": "Describe what the character wears at this budget and which slot to improve first when currency arrives.",
+      "rubric": ["tier-description"]
+    },
+    {
+      "id": "slot",
+      "title": "A gear slot",
+      "appliesTo": ["S9.slot-*"],
+      "text": "For this slot give the reason for the item, the modifiers to look for in order of priority, where to get it, acceptable alternatives and how to upgrade.",
+      "rubric": ["slot-why", "slot-where", "slot-stats", "slot-alternatives", "slot-actionable"]
+    },
+    {
+      "id": "craft",
+      "title": "A crafting plan",
+      "appliesTo": ["S9.craft-*"],
+      "text": "Explain the strategy so a player can follow it, with the tips and the pitfalls of each important step.",
+      "rubric": ["craft-overview", "craft-tips", "craft-pitfalls", "craft-followable"]
+    },
+    {
+      "id": "research",
+      "title": "Research findings",
+      "appliesTo": ["S9.research-*"],
+      "text": "Research with the web tools of your own client, never from memory. Each finding is one specific, checkable statement in your own words (no copied passages) with the link and title of the page it comes from, and the catalog entities it is about. Prefer patch notes, the game wiki and community build guides; prefer the newest source and note when sources disagree. Never state a number: describe it, or reference a calculation. If you have no web tools, answer with webAccess false and no findings; do not invent sources."
+    },
+    {
+      "id": "citations",
+      "title": "Cite the research you rely on",
+      "appliesTo": [
+        "S9.summary",
+        "S9.mechanics",
+        "S9.playstyle",
+        "S9.atlas",
+        "S9.variants",
+        "S9.faq"
+      ],
+      "text": "When the task context holds research findings, build on them: where a statement rests on a finding, add a source segment with that finding's id after it. Cite only ids that appear in the context, never one you made up. Where findings disagree with the build's measured values, the calculation wins; say so."
+    }
+  ]
+}

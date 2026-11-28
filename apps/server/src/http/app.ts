@@ -1,4 +1,6 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -8,6 +10,7 @@ import { CalcId } from "@astrolabe/contracts/common";
 import type { RunEvent } from "@astrolabe/contracts/events";
 import { UserIntervention } from "@astrolabe/contracts/forge";
 import {
+  GuideCommentRequest,
   GUIDE_FILE_FORMAT,
   GuideFile,
   type GuideListItem,
@@ -15,10 +18,16 @@ import {
   collectCalcIds,
   GuideView,
   PassiveTreeData,
+  TreeIconAtlas,
   PublishedGuide,
 } from "@astrolabe/contracts/guide";
 import { guideToBuildFile } from "@astrolabe/exporters";
+import { buildCommentsView } from "../guides/comments.js";
+import type { RunRecord } from "../engine/run-record.js";
 import { buildGuideView } from "../guides/guide-view.js";
+import { withCatalogIds } from "../tree-icons/catalog-ids.js";
+import type { BuiltIconAtlas } from "../tree-icons/atlas.js";
+import type { TreeIconSource } from "../tree-icons/source.js";
 import { buildPassiveTreeData } from "../guides/tree-data.js";
 import { buildFileResolvers } from "../export/build-file-resolvers.js";
 import type { GuideSweeper } from "../tools/guide-sweep.js";
@@ -53,14 +62,20 @@ export interface AppOptions extends ForgeMcpDeps {
   port: number;
   /** Browser origins allowed to call the API (the app's own window). Requests without Origin pass. */
   allowedOrigins: readonly string[];
+  /** Data release directory; its `assets/items` images are served at /api/release-assets. */
+  assetsDir?: string;
   /** Default pipeline for new runs. */
   defaultPipelineId: string;
   /** Set in catalog-only mode (no matching engine); shown by /api/health and the app window. */
   catalogOnlyReason?: string;
   /** Automatic revalidation of stored guides (F-19); absent without a releases directory. */
   guideSweep?: GuideSweeper;
+  /** Node icons for the passive tree (`/api/tree/icons.json` and `.png`); absent = the routes answer 404. */
+  treeIcons?: TreeIconSource;
   /** The stored guide with this id (see `RunStore.findGuide`), unvalidated; enables the guide and `.build` routes. */
   findGuide?: (guideId: string) => unknown;
+  /** The run that made a guide (see `RunStore.findRunByGuideId`); enables the comment routes. */
+  findRunByGuide?: (guideId: string) => RunRecord | undefined;
   /** Ids of all stored guides, newest first (see `RunStore.listGuideIds`). */
   listGuideIds?: () => string[];
   /** Where a stored guide comes from (see `RunStore.guideOrigin`); needed to list guides. */
@@ -81,6 +96,8 @@ const CreateRunBody = z.object({
   pipelineId: z.string().min(1).optional(),
 });
 const RunParams = z.object({ runId: z.string().min(1) });
+/** One file name inside assets/items: no path separators, `..` or other suffixes. */
+const ItemImageParams = z.object({ file: z.string().regex(/^[\w-]+\.png$/) });
 const GuideParams = z.object({ guideId: z.string().min(1).max(200) });
 /** Name inside the exported `.build` file. */
 const BUILD_FILE_NAME_MAX_CHARS = 80;
@@ -89,6 +106,8 @@ const BUILD_FILE_NAME_MAX_CHARS = 80;
 export function createApp(options: AppOptions): FastifyInstance {
   const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT_BYTES });
   const { engine, logger } = options;
+  /** The run behind a guide; a guide without one (imported file) cannot be commented on. */
+  const commentRun = (guideId: string): RunRecord | undefined => options.findRunByGuide?.(guideId);
   const expectedToken = digest(options.accessToken);
   const tokenMatches = (header: string | undefined) =>
     header?.startsWith("Bearer ") === true &&
@@ -234,6 +253,83 @@ export function createApp(options: AppOptions): FastifyInstance {
   app.get("/api/tree", () => {
     treeData ??= PassiveTreeData.parse(buildPassiveTreeData(options.catalog));
     return treeData;
+  });
+
+  // The icons are an extra: when they cannot be built the window keeps drawing the tree without
+  // them, so this says why (and logs the cause) instead of failing as an internal error.
+  let iconIndex: TreeIconAtlas | undefined;
+  const withIconAtlas = async (
+    reply: FastifyReply,
+    send: (atlas: BuiltIconAtlas) => unknown,
+  ): Promise<unknown> => {
+    if (options.treeIcons === undefined) {
+      return reply.code(404).send({
+        error: {
+          code: "no_icons",
+          message: "This server has no Path of Building folder for node icons.",
+        },
+      });
+    }
+    try {
+      const built = await options.treeIcons();
+      iconIndex ??= TreeIconAtlas.parse(withCatalogIds(built.index, options.catalog));
+      return send({ png: built.png, index: iconIndex });
+    } catch (error) {
+      logger.error("tree icons failed", { error });
+      return reply.code(503).send({
+        error: { code: "icons_unavailable", message: "The passive tree icons could not be built." },
+      });
+    }
+  };
+  app.get("/api/tree/icons.json", (_request, reply) =>
+    withIconAtlas(reply, (atlas) => atlas.index),
+  );
+  app.get("/api/tree/icons.png", (_request, reply) =>
+    withIconAtlas(reply, (atlas) =>
+      reply.type("image/png").header("cache-control", "private, max-age=3600").send(atlas.png),
+    ),
+  );
+
+  app.get("/api/guides/:guideId/comments", async (request) => {
+    const { guideId } = GuideParams.parse(request.params);
+    return buildCommentsView(guideId, commentRun(guideId));
+  });
+
+  app.post("/api/guides/:guideId/comments", async (request, reply) => {
+    const { guideId } = GuideParams.parse(request.params);
+    const body = GuideCommentRequest.parse(request.body);
+    const run = commentRun(guideId);
+    if (run === undefined) {
+      throw new ForgeError("invalid_request", buildCommentsView(guideId, undefined).reason ?? "");
+    }
+    await engine.intervene(run.runId, {
+      kind: "comment",
+      commentId: randomUUID(),
+      section: body.section,
+      text: body.text,
+    });
+    // The run has a new open task; the app shows its session code for Claude.
+    return reply.code(201).send(buildCommentsView(guideId, commentRun(guideId)));
+  });
+
+  // Inventory images of the data release (ADR-0007). Only `assets/items/<name>.png` is served.
+  app.get("/api/release-assets/assets/items/:file", async (request, reply) => {
+    const { file } = ItemImageParams.parse(request.params);
+    const missing = (message: string) =>
+      reply.code(404).send({ error: { code: "not_found", message } });
+    if (options.assetsDir === undefined) return missing("This server has no data release images.");
+    let bytes: Buffer;
+    try {
+      bytes = await readFile(join(options.assetsDir, "assets", "items", file));
+    } catch (cause) {
+      // an absent image is the normal "no art for this item"; anything else is a fault
+      if ((cause as { code?: string }).code === "ENOENT") return missing(`No item image ${file}.`);
+      throw new Error(`cannot read item image ${file}`, { cause });
+    }
+    return reply
+      .header("content-type", "image/png")
+      .header("cache-control", "private, max-age=86400")
+      .send(bytes);
   });
 
   app.get("/api/guides/:guideId/view", async (request) => {

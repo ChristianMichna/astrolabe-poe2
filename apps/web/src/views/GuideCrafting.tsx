@@ -1,6 +1,7 @@
 import type { CraftOnFail, CraftStep, CraftingPlan } from "@astrolabe/contracts/build";
 import type { GuideView } from "@astrolabe/contracts/guide";
-import { Panel, StatGrid, StatValue } from "@astrolabe/ui";
+import { Callout, Panel, StatGrid, StatValue } from "@astrolabe/ui";
+import type { ValueState } from "@astrolabe/ui";
 import { measuredState } from "../guide/measured";
 import { priceLabel, priceState } from "../guide/price";
 import { RichTextView, nameOf } from "../guide/RichTextView";
@@ -31,6 +32,31 @@ function failText(onFail: CraftOnFail, view: GuideView): React.ReactNode {
   }
 }
 
+/*
+ * A number the engine or the market does not have is not repeated on every card: the cell is left
+ * out and the plan states once, below its title, which numbers are missing and why. Nothing is
+ * estimated in its place.
+ */
+type CellProps = { label: string; format: "decimal1"; state: ValueState; emphasis?: boolean };
+
+function Cell(props: CellProps) {
+  if (props.state.status === "uncalibrated") return null;
+  return <StatValue {...props} />;
+}
+
+function missingReasons(plan: CraftingPlan): string[] {
+  const states: ValueState[] = [
+    priceState(plan.start.cost),
+    priceState(plan.expectedTotal),
+    ...plan.steps.flatMap((s) => [
+      measuredState(s.successChance, 100),
+      measuredState(s.expectedAttempts),
+      priceState(s.expectedCost),
+    ]),
+  ];
+  return [...new Set(states.flatMap((st) => (st.status === "uncalibrated" ? [st.reason] : [])))];
+}
+
 function StepNode({ step, view }: { step: CraftStep; view: GuideView }) {
   const actions = step.actionIds.map((id) => nameOf(view, { kind: "craftingAction", id }) ?? id);
   return (
@@ -42,17 +68,17 @@ function StepNode({ step, view }: { step: CraftStep; view: GuideView }) {
           <RichTextView text={step.goal} view={view} />
         </p>
         <StatGrid>
-          <StatValue
+          <Cell
             label="Chance (%)"
             format="decimal1"
             state={measuredState(step.successChance, 100)}
           />
-          <StatValue
+          <Cell
             label="Expected attempts"
             format="decimal1"
             state={measuredState(step.expectedAttempts)}
           />
-          <StatValue
+          <Cell
             label={priceLabel(step.expectedCost, view)}
             format="decimal1"
             state={priceState(step.expectedCost)}
@@ -71,6 +97,16 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
       title={plan.slot}
       kicker={plan.tier === undefined ? "Crafting plan" : `Crafting plan · ${plan.tier}`}
     >
+      {missingReasons(plan).length === 0 ? null : (
+        <Callout tone="info" title="Some numbers are not available">
+          <p>These are left out rather than estimated:</p>
+          <ul>
+            {missingReasons(plan).map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </Callout>
+      )}
       {plan.guide === undefined ? null : (
         <>
           <p>
@@ -87,7 +123,7 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
             <h3>{base ?? plan.start.baseItemId}</h3>
             <p>Item level {plan.start.itemLevel}</p>
             <StatGrid>
-              <StatValue
+              <Cell
                 label={priceLabel(plan.start.cost, view)}
                 format="decimal1"
                 state={priceState(plan.start.cost)}
@@ -102,7 +138,7 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
           ))}
       </ol>
       <StatGrid>
-        <StatValue
+        <Cell
           label={`Expected total · ${priceLabel(plan.expectedTotal, view)}`}
           emphasis
           format="decimal1"

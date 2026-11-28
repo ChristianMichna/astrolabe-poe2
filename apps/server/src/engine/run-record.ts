@@ -61,6 +61,8 @@ export const RunRecord = z.object({
   /** Findings returned to a stage, shown to the task that redoes it. */
   returned: z.record(z.string(), z.array(Finding)).default({}),
   guideId: z.uuid().optional(),
+  /** Earlier published versions of the guide (S11 results), oldest first; filled by section comments. */
+  revisions: z.array(JsonValue).default([]),
   error: z.object({ code: z.string().min(1), message: z.string().min(1) }).optional(),
 });
 export type RunRecord = z.infer<typeof RunRecord>;

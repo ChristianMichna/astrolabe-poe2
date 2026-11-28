@@ -15,6 +15,7 @@ import type { JsonValue } from "@astrolabe/contracts/common";
 import type { StageConfig } from "../config.js";
 import { defineTask, type AnyTaskSpec, type PipelineContext } from "../pipeline.js";
 import { S9_DETAIL } from "../prompts.js";
+import { partFindings } from "../quality/rubric.js";
 import { requestContext } from "./context.js";
 import { slotSlug } from "./s8-craft.js";
 import { citableCalcs, walkSection } from "./s9-guide.js";
@@ -128,6 +129,7 @@ export function detailTask(
   inputs: { plans: DetailPlans; target: TargetBuild },
 ): AnyTaskSpec {
   const depth = config.s9?.depth;
+  const rubric = config.s9?.rubric;
   const base = {
     request: requestContext(ctx),
     calcs: citableCalcs(inputs.target),
@@ -168,7 +170,16 @@ export function detailTask(
               : { key: previous.key, label: previous.label, skills: previous.state.skills },
         }),
         schema: StageGuide,
-        check: stageCheck(inputs.plans, stage, depth?.minTreeNotesPerStage ?? 0),
+        check: async (p: StageGuide): Promise<Finding[]> => [
+          ...(await stageCheck(inputs.plans, stage, depth?.minTreeNotesPerStage ?? 0)(p)),
+          ...partFindings(
+            rubric,
+            {
+              progression: { stages: [{ key: stage.key, levelRange: stage.levelRange, guide: p }] },
+            },
+            "/progression/stages/*/guide",
+          ),
+        ],
         entities: (p) => walkSection(p).entities,
         richText: (p) => walkSection(p).texts,
       });
@@ -190,6 +201,16 @@ export function detailTask(
           upgradeOrder: tier?.upgradeOrder,
         }),
         schema: TierDescription,
+        check: (p: TierDescription): Promise<Finding[]> =>
+          Promise.resolve(
+            partFindings(
+              rubric,
+              {
+                gear: { tiers: [{ budgetTier: item.tier, slots: [], description: p.description }] },
+              },
+              "/gear/tiers/*/description",
+            ),
+          ),
         entities: (p) => walkSection(p).entities,
         richText: (p) => walkSection(p).texts,
       });
@@ -203,19 +224,33 @@ export function detailTask(
         context: json({ ...base, tier: item.tier, slot }),
         schema: SlotGuide,
         check: (p: SlotGuide): Promise<Finding[]> =>
-          Promise.resolve(
-            p.statPriorities.length < (depth?.minStatPrioritiesPerSlot ?? 0)
+          Promise.resolve([
+            ...partFindings(
+              rubric,
+              {
+                gear: {
+                  tiers: [
+                    {
+                      budgetTier: item.tier,
+                      slots: [{ slot: item.slot, acquisition: "drop", guide: p }],
+                    },
+                  ],
+                },
+              },
+              "/gear/tiers/*/slots/*/guide",
+            ),
+            ...(p.statPriorities.length < (depth?.minStatPrioritiesPerSlot ?? 0)
               ? [
                   {
-                    gate: "schema",
-                    severity: "error",
+                    gate: "schema" as const,
+                    severity: "error" as const,
                     code: "too_few_stat_priorities",
                     message: `Name at least ${String(depth?.minStatPrioritiesPerSlot)} modifiers to look for in statPriorities.`,
                     path: "/statPriorities",
                   },
                 ]
-              : [],
-          ),
+              : []),
+          ]),
         entities: (p) => walkSection(p).entities,
         richText: (p) => walkSection(p).texts,
       });
@@ -226,6 +261,14 @@ export function detailTask(
         instructions: `${S9_DETAIL} Part to write: the guide of the crafting plan for slot ${item.plan.slot}: an overview of the strategy, tips for doing it efficiently and the mistakes that waste currency.`,
         context: json({ ...base, plan: item.plan }),
         schema: CraftingGuide,
+        check: (p: CraftingGuide): Promise<Finding[]> =>
+          Promise.resolve(
+            partFindings(
+              rubric,
+              { crafting: [{ key: item.plan.key, steps: [], start: {}, guide: p }] },
+              "/crafting/*/guide",
+            ),
+          ),
         entities: (p) => walkSection(p).entities,
         richText: (p) => walkSection(p).texts,
       });

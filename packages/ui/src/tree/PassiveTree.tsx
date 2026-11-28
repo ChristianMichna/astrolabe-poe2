@@ -4,6 +4,7 @@ import { ProvenanceBadge } from "../components/Provenance";
 import type { ProvenanceView } from "../components/provenance-model";
 import type { TreeCamera, TreeHighlight } from "./renderer";
 import type { TreeCanvasHandle } from "./TreeCanvas";
+import type { TreeIconSheet } from "./renderer";
 import { TreeCanvas } from "./TreeCanvas";
 import type { PassiveTreeView, TreeNodeShape, TreeNodeView } from "./tree-model";
 import type { TimelineState, TreeTimeline } from "./tree-timeline";
@@ -19,6 +20,12 @@ export interface PassiveTreeProps {
   readonly timeline: TreeTimeline;
   /** Stage shown first (index); its last point is selected. */
   readonly initialStage?: number;
+  /** Selected stage (index) when the page owns the stage choice; the tree follows it. */
+  readonly stageIndex?: number;
+  /** Called when the reader moves the tree into another stage. */
+  readonly onStageChange?: (index: number) => void;
+  /** Node pictures (see `TreeIconSheet`); the plain shapes show without them. */
+  readonly iconSheet?: TreeIconSheet;
   /** Where the tree data comes from (data release). */
   readonly provenance: ProvenanceView;
   /** Where the allocation comes from, e.g. a sample fixture or a guide revision. */
@@ -87,8 +94,11 @@ export function PassiveTree({
   ascendancy,
   timeline,
   initialStage = 0,
+  stageIndex,
+  onStageChange,
   provenance,
   allocationSource,
+  iconSheet,
 }: PassiveTreeProps) {
   const canvasRef = useRef<TreeCanvasHandle>(null);
   const insetRef = useRef<TreeCanvasHandle>(null);
@@ -101,6 +111,7 @@ export function PassiveTree({
   const [query, setQuery] = useState("");
   const [hover, setHover] = useState<Hover | null>(null);
   const [camera, setCamera] = useState<TreeCamera | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const state = useMemo(() => stateAt(timeline, cursor, stageHint), [timeline, cursor, stageHint]);
   const stage = timeline.stages[state.stage];
@@ -111,6 +122,40 @@ export function PassiveTree({
     [ascendancy, query],
   );
   const insetHighlight = useMemo(() => highlightOf(state, insetMatches), [state, insetMatches]);
+
+  // The page owns the stage choice: the tree moves to the end of the chosen stage (state set while
+  // rendering, the pattern React gives for state that follows a prop).
+  const [followed, setFollowed] = useState<number | undefined>(undefined);
+  if (stageIndex !== undefined && stageIndex !== followed) {
+    setFollowed(stageIndex);
+    const target = timeline.stages[stageIndex];
+    if (target !== undefined && stageIndex !== state.stage) {
+      setPlaying(null);
+      setStageHint(stageIndex);
+      setCursor(target.to);
+    }
+  }
+  const reported = useRef(state.stage);
+  useEffect(() => {
+    if (reported.current === state.stage) return;
+    reported.current = state.stage;
+    onStageChange?.(state.stage);
+  }, [state.stage, onStageChange]);
+
+  // Full screen: the tree fills the window; Escape leaves it and the page stops scrolling meanwhile.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) setExpanded(false);
+    };
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = before;
+    };
+  }, [expanded]);
 
   // playback runs to the end of the stage it was started in
   useEffect(() => {
@@ -205,11 +250,12 @@ export function PassiveTree({
   const issues = [...view.issues, ...(ascendancy?.view.issues ?? []), ...timeline.issues];
 
   return (
-    <div className="ef-tree">
+    <div className={expanded ? "ef-tree ef-tree--expanded" : "ef-tree"}>
       <div className="ef-tree__stage">
         <TreeCanvas
           ref={canvasRef}
           view={view}
+          iconSheet={iconSheet}
           highlight={highlight}
           focus={hover && !hover.inset ? hover.id : undefined}
           initialFit={allocatedMain}
@@ -296,6 +342,21 @@ export function PassiveTree({
             <div className="ef-tree__zoom" role="group" aria-label="Zoom">
               <button
                 type="button"
+                onClick={() => setExpanded((e) => !e)}
+                aria-pressed={expanded}
+                aria-label="Full screen"
+                title={expanded ? "Leave full screen (Esc)" : "Full screen"}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  {expanded ? (
+                    <path d="M6 1v5H1M10 1v5h5M10 15v-5h5M6 15v-5H1" />
+                  ) : (
+                    <path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5" />
+                  )}
+                </svg>
+              </button>
+              <button
+                type="button"
                 onClick={() => canvasRef.current?.zoomBy(1.4)}
                 aria-label="Zoom in"
               >
@@ -374,6 +435,7 @@ export function PassiveTree({
             <TreeCanvas
               ref={insetRef}
               view={ascendancy.view}
+              iconSheet={iconSheet}
               highlight={insetHighlight}
               focus={hover?.inset ? hover.id : undefined}
               bezel={false}

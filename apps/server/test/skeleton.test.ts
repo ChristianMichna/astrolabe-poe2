@@ -55,7 +55,11 @@ function setup(
     unsupportedMods?: "avoid" | "accept";
     unsupportedMaxRounds?: number;
   } = {},
-  extra: { minion?: { skillKinds: string[]; statMap: Record<string, string> } } = {},
+  extra: {
+    minion?: { skillKinds: string[]; statMap: Record<string, string> };
+    placeholderWeapon?: { slot: string; rarity: string };
+    calc?: { calculate: unknown; getResult: unknown };
+  } = {},
 ) {
   const optimize = vi.fn<(input: TreeOptimizeInput) => Promise<never>>(() =>
     Promise.resolve(optimizeResult as never),
@@ -69,7 +73,7 @@ function setup(
   const skeleton = new PobSkeleton({
     pob: { withBuild } as never,
     pool: { request: () => Promise.reject(new Error("not used")) } as never,
-    calc: { engine: "pob", calculate, getResult },
+    calc: { engine: "pob", calculate, getResult, ...extra.calc } as never,
     catalog: usedCatalog,
     optimizerConfig: {} as never,
     settings: {
@@ -79,6 +83,9 @@ function setup(
       supportCount: 1,
       calcProfiles: ["as-saved"],
       objective: { weights: { FullDPS: 1 }, floors: {} },
+      ...(extra.placeholderWeapon === undefined
+        ? {}
+        : { placeholderWeapon: extra.placeholderWeapon }),
     },
     target: {
       calcProfiles: ["as-saved"],
@@ -86,7 +93,7 @@ function setup(
       ...targetExtra,
     },
     progression: { calcProfiles: ["as-saved"], objective: { weights: { FullDPS: 1 }, floors: {} } },
-    ...extra,
+    ...(extra.minion === undefined ? {} : { minion: extra.minion }),
     logger: createMemoryLogger(),
     optimize,
     optimizeStages: optimizeStages as never,
@@ -118,6 +125,157 @@ describe("PobSkeleton", () => {
     expect(out.skeleton.tree.allocated.map((n) => n.nodeId)).toEqual(["FixN1", "FixN2"]);
     expect(out.calcs).toEqual({ "as-saved": { status: "ok", calcId: "calc-1" } });
     expect(calculate).toHaveBeenCalledOnce();
+  });
+
+  describe("placeholder weapon", () => {
+    const optimized = {
+      allocated: ["FixN1"],
+      feasible: true,
+      violations: [],
+      failedEvaluationCount: 0,
+      failedEvaluations: [],
+      stoppedBy: "budget_spent",
+    };
+    const base = (id: string, itemClass: string, level: number, tags: string[] = []) => ({
+      id,
+      name: id,
+      itemClass,
+      tags,
+      requirements: { level },
+      implicitModIds: [],
+      properties: {},
+    });
+    const withWeapons = Object.assign(Object.create(catalog) as typeof catalog, {
+      release: {
+        itemSlots: { slots: [{ id: "Weapon 1", itemClasses: ["Bow", "Mace"] }] },
+        rarities: { rarities: [{ id: "normal", name: "Normal" }] },
+      },
+      list: (kind: string) =>
+        kind === "baseItem"
+          ? [
+              base("HighBow", "Bow", 30),
+              base("LowBow", "Bow", 1),
+              base("UniqueBow", "Bow", 0, ["unique"]),
+              base("LowMace", "Mace", 1),
+            ].map((entity) => ({ kind: "baseItem", id: entity.id, entity }))
+          : catalog.list(kind as never),
+    });
+    // the engine measures damage only for a bow; the stats follow the items of the state
+    const engine = (damage: Record<string, number>) => {
+      const seen = new Map<string, number>();
+      return {
+        calculate: vi.fn((input: { state: { items: { item: { baseItemId: string } }[] } }) => {
+          const id = input.state.items[0]?.item.baseItemId ?? "none";
+          seen.set(`calc-${id}`, damage[id] ?? 0);
+          return Promise.resolve({ "as-saved": { status: "ok", calcId: `calc-${id}` } });
+        }),
+        getResult: vi.fn((id: string) =>
+          Promise.resolve({ unsupportedMods: [], stats: { FullDPS: seen.get(id) ?? 0 } }),
+        ),
+      };
+    };
+    const slotConfig = { slot: "Weapon 1", rarity: "normal" };
+
+    it("equips the lowest-requirement base of the class PoB measures best", async () => {
+      const calc = engine({ LowBow: 50, LowMace: 10 });
+      const { skeleton, withBuild } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        {
+          placeholderWeapon: slotConfig,
+          calc,
+        },
+      );
+      const out = await skeleton.evaluate({ request: REQUEST, profile, candidate: cand });
+      expect(out.skeleton.items).toEqual([
+        {
+          slot: "Weapon 1",
+          item: {
+            kind: "crafted",
+            baseItemId: "LowBow",
+            rarity: "normal",
+            mods: [],
+            socketables: [],
+          },
+        },
+      ]);
+      expect((withBuild.mock.calls[0]?.[0] as { items: unknown[] }).items).toHaveLength(1);
+    });
+
+    it("equips nothing when no weapon beats the build without one", async () => {
+      const { skeleton } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        {
+          placeholderWeapon: slotConfig,
+          calc: engine({}),
+        },
+      );
+      const out = await skeleton.evaluate({ request: REQUEST, profile, candidate: cand });
+      expect(out.skeleton.items).toEqual([]);
+    });
+
+    it("measures the weapons once per skill and fails for a slot the release lacks", async () => {
+      const calc = engine({ LowBow: 50 });
+      const { skeleton } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        {
+          placeholderWeapon: slotConfig,
+          calc,
+        },
+      );
+      await skeleton.evaluate({ request: REQUEST, profile, candidate: cand });
+      const first = calc.calculate.mock.calls.length;
+      await skeleton.evaluate({ request: REQUEST, profile, candidate: cand });
+      // the second evaluation only measures its own skeleton, not the weapons again
+      expect(calc.calculate.mock.calls.length - first).toBeLessThan(first);
+      const { skeleton: odd } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        {
+          placeholderWeapon: { slot: "Nowhere", rarity: "normal" },
+        },
+      );
+      await expect(odd.evaluate({ request: REQUEST, profile, candidate: cand })).rejects.toThrow(
+        /item slot Nowhere/,
+      );
+    });
+
+    it("fails visibly for an unknown rarity or a missing objective stat", async () => {
+      const { skeleton: rare } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        { placeholderWeapon: { slot: "Weapon 1", rarity: "mythic" } },
+      );
+      await expect(rare.evaluate({ request: REQUEST, profile, candidate: cand })).rejects.toThrow(
+        /rarity mythic/,
+      );
+      const blind = {
+        calculate: engine({ LowBow: 50 }).calculate,
+        getResult: () => Promise.resolve({ unsupportedMods: [], stats: {} }),
+      };
+      const { skeleton } = setup(
+        optimized,
+        undefined,
+        withWeapons,
+        {},
+        { placeholderWeapon: slotConfig, calc: blind },
+      );
+      await expect(
+        skeleton.evaluate({ request: REQUEST, profile, candidate: cand }),
+      ).rejects.toThrow(/reported no FullDPS/);
+    });
   });
 
   describe("minion builds", () => {

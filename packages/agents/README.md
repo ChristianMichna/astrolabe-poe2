@@ -44,3 +44,20 @@ bzw. G5 sichtbar fehl. Das Tag `minion` taugt nicht als Kriterium, weil auch Fer
 - Prompts enthalten kein Spielwissen aus dem Modellgedächtnis.
 
 `createForgePipeline(config)` liefert die Pipeline mit der ID `forge`.
+
+## Platzhalter-Waffe im Skelett
+
+Angriffsskills machen ohne Waffe in PoB keinen Schaden; Zielbaum und Stufen wären dann blind für DPS und
+zeigten flache Nullkurven. `s3.placeholderWeapon` (`config/agents/stages.json`, Slot und Seltenheit aus dem
+Daten-Release) lässt das Skelett (S3) eine Waffe tragen: Aus jeder Waffenklasse, die der Slot nimmt
+(`DataRelease.itemSlots`), wird die Basis mit der niedrigsten Anforderung gerechnet; gewinnt die Klasse, die PoB
+für den Hauptskill am besten misst, und nur wenn sie besser ist als der Build ohne Waffe (Zauber und Minions
+brauchen keine). Die Waffe hat keine Modifikatoren und wandert über S4 bis S6 in Zielbaum und Stufen; die
+Gear-Stufen (S7) ersetzen alle Items. Fehlt der Slot im Release oder die Rechnung scheitert, ist das ein
+sichtbarer Fehler, kein stiller Verzicht.
+
+Grenzen: Die Platzhalter-Waffe steht im Zustand der Stufen; der `.build`-Export lässt Items ohne Modifikatoren weg und
+nennt den Slot in `omitted`; die Gear-Stufen ersetzen sie in den Messungen von S7 und S10, nicht in den
+veröffentlichten Stufen. Gewählt wird nach der Zielfunktion von S3
+(roh gewichtete Summe); die Wahl wird je Server und Skill gecacht. Attribut-Anforderungen der Basis fließen nicht
+in die Wahl ein (nur die Anforderungsstufe).

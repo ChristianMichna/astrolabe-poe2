@@ -9,6 +9,8 @@ import {
   ItemSpec,
   ProgressionStage,
   PublishedGuide,
+  ResearchFinding,
+  ResearchFindings,
   RichText,
 } from "../src/index.js";
 import { without } from "./helpers.js";
@@ -336,5 +338,70 @@ describe("GuideDocument", () => {
   ])("rejects a guide without %s", (part) => {
     const g = without(guide, part as keyof typeof guide);
     expect(GuideDocument.safeParse(g).success).toBe(false);
+  });
+});
+
+describe("research findings (ADR-0006)", () => {
+  const finding = {
+    id: "boss-order",
+    section: "playstyle",
+    topic: "Order of the boss phases",
+    claim: [{ type: "text", text: "Fixture claim in the researcher's own words." }],
+    source: {
+      url: "https://example.test/guide",
+      title: "Fixture guide",
+      retrievedAt: "2026-11-28T00:00:00Z",
+    },
+  };
+
+  it("accepts a finding, defaults its entities and lets text cite it", () => {
+    const parsed = ResearchFinding.parse(finding);
+    expect(parsed.entities).toEqual([]);
+    expect(
+      RichText.parse([
+        { type: "text", text: "See" },
+        { type: "source", id: "boss-order" },
+      ]),
+    ).toHaveLength(2);
+  });
+
+  it("rejects links that are not https and findings without a source", () => {
+    expect(() =>
+      ResearchFinding.parse({
+        ...finding,
+        source: { ...finding.source, url: "http://example.test" },
+      }),
+    ).toThrow();
+    expect(() =>
+      ResearchFinding.parse({
+        ...finding,
+        source: { ...finding.source, url: "https://user:pw@example.test/" },
+      }),
+    ).toThrow();
+    expect(() =>
+      ResearchFinding.parse({
+        ...finding,
+        source: { ...finding.source, url: "javascript:alert(1)" },
+      }),
+    ).toThrow();
+    for (const url of [
+      "https://example.test\\@evil.example/",
+      "https://example.test:99999/",
+      "https://[::1]/",
+      "https://example.test/a\tb",
+      "https://example.test/a\nb",
+      "https://example.test/a b",
+    ]) {
+      expect(() =>
+        ResearchFinding.parse({ ...finding, source: { ...finding.source, url } }),
+      ).toThrow();
+    }
+    expect(() => ResearchFinding.parse(without(finding, "source"))).toThrow();
+    expect(() => RichText.parse([{ type: "source", id: "Not A Slug" }])).toThrow();
+  });
+
+  it("keeps the ids of a guide's findings unique", () => {
+    expect(() => ResearchFindings.parse([finding, finding])).toThrow(/not unique/);
+    expect(ResearchFindings.parse([finding])).toHaveLength(1);
   });
 });

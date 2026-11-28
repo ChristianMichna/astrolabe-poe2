@@ -1,0 +1,359 @@
+{
+  "$comment": "Quality rubric of the guide (gate G7, depth). Derived on 27.11.2026 from the structure and level of detail of two reference build guides (a Path of Exile 1 league starter guide and a Path of Exile 2 minion guide): an introduction in several paragraphs, strengths and weaknesses, a skill section with progression and rotation for clearing and bossing, a passive tree section that explains its choices, gear per slot with priorities and alternatives, crafting, endgame advice, build variants, a question section and a short summary. No text of those guides is used. Thresholds are quality bars set by the developers, not game facts; the product owner can change them. `rules` are measured by the app on the finished guide (count of entries or words at a JSON pointer, * is every element); `questions` are judged by Claude in one task per section. Each criterion names the task that is sent back.",
+  "version": "guide-rubric-1",
+  "rules": [
+    {
+      "id": "summary-intro-paragraphs",
+      "section": "summary",
+      "description": "The introduction is written in several paragraphs.",
+      "path": "/summary/introduction",
+      "measure": "count",
+      "min": 3,
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "summary-intro-words",
+      "section": "summary",
+      "description": "The introduction says what the build does, how it defends and how it grows.",
+      "path": "/summary/introduction",
+      "measure": "words",
+      "min": 150,
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "summary-strengths",
+      "section": "summary",
+      "description": "The strengths are listed.",
+      "path": "/summary/strengths",
+      "measure": "count",
+      "min": 3,
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "summary-weaknesses",
+      "section": "summary",
+      "description": "The weaknesses are listed.",
+      "path": "/summary/weaknesses",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "summary-closing",
+      "section": "summary",
+      "description": "The guide closes with a short summary.",
+      "path": "/summary/closing",
+      "measure": "words",
+      "min": 20,
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "mechanics-explanation",
+      "section": "mechanics",
+      "description": "The explanation of how the build works is more than a statement.",
+      "path": "/mechanics/explanation",
+      "measure": "words",
+      "min": 80,
+      "returnTo": "S9.mechanics"
+    },
+    {
+      "id": "mechanics-interactions",
+      "section": "mechanics",
+      "description": "The key interactions of items, gems and passives are explained.",
+      "path": "/mechanics/interactions",
+      "measure": "count",
+      "min": 3,
+      "returnTo": "S9.mechanics"
+    },
+    {
+      "id": "mechanics-defences",
+      "section": "mechanics",
+      "description": "Each defence layer is explained.",
+      "path": "/mechanics/defences",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.mechanics"
+    },
+    {
+      "id": "mechanics-gem-setups",
+      "section": "mechanics",
+      "description": "The skill setups are explained.",
+      "path": "/mechanics/gemSetups",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.mechanics"
+    },
+    {
+      "id": "playstyle-rotation",
+      "section": "playstyle",
+      "description": "The rotation is described in words.",
+      "path": "/playstyle/rotation",
+      "measure": "words",
+      "min": 40,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "playstyle-steps",
+      "section": "playstyle",
+      "description": "The rotation is given as ordered steps.",
+      "path": "/playstyle/rotationSteps",
+      "measure": "count",
+      "min": 4,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "playstyle-mapping",
+      "section": "playstyle",
+      "description": "Mapping advice is given.",
+      "path": "/playstyle/mapping",
+      "measure": "words",
+      "min": 30,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "playstyle-bossing",
+      "section": "playstyle",
+      "description": "Boss advice is given.",
+      "path": "/playstyle/bossing",
+      "measure": "words",
+      "min": 30,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "playstyle-tips",
+      "section": "playstyle",
+      "description": "Tips are listed.",
+      "path": "/playstyle/tips",
+      "measure": "count",
+      "min": 3,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "playstyle-mistakes",
+      "section": "playstyle",
+      "description": "Common mistakes are listed.",
+      "path": "/playstyle/commonMistakes",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "atlas-strategy",
+      "section": "atlas",
+      "description": "The endgame strategy is described.",
+      "path": "/atlas/strategy",
+      "measure": "words",
+      "min": 40,
+      "returnTo": "S9.atlas"
+    },
+    {
+      "id": "atlas-phases",
+      "section": "atlas",
+      "description": "The endgame is split into phases.",
+      "path": "/atlas/phases",
+      "measure": "count",
+      "min": 3,
+      "returnTo": "S9.atlas"
+    },
+    {
+      "id": "atlas-waystones",
+      "section": "atlas",
+      "description": "Waystone advice is given.",
+      "path": "/atlas/waystoneTips",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.atlas"
+    },
+    {
+      "id": "variants-count",
+      "section": "variants",
+      "description": "Alternatives for other budgets or modes are given.",
+      "path": "/variants",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "S9.variants"
+    },
+    {
+      "id": "faq-count",
+      "section": "faq",
+      "description": "The troubleshooting section answers several questions.",
+      "path": "/faq",
+      "measure": "count",
+      "min": 5,
+      "returnTo": "S9.faq"
+    },
+    {
+      "id": "faq-answer-words",
+      "section": "faq",
+      "description": "Each answer is more than a one-liner.",
+      "path": "/faq/*/answer",
+      "measure": "words",
+      "min": 30,
+      "returnTo": "S9.faq"
+    },
+    {
+      "id": "stage-intro",
+      "section": "progression",
+      "description": "The stage explains what it is for.",
+      "path": "/progression/stages/*/guide/intro",
+      "measure": "words",
+      "min": 40,
+      "returnTo": "detail:stage"
+    },
+    {
+      "id": "stage-tree-notes",
+      "section": "progression",
+      "description": "The stage explains why its passive choices were made.",
+      "path": "/progression/stages/*/guide/treeNotes",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "detail:stage"
+    },
+    {
+      "id": "stage-checklist",
+      "section": "progression",
+      "description": "The stage has a checklist for moving on.",
+      "path": "/progression/stages/*/guide/checklist",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "detail:stage"
+    },
+    {
+      "id": "stage-gear-notes",
+      "section": "progression",
+      "description": "The stage says what to do about gear.",
+      "path": "/progression/stages/*/guide/gearNotes",
+      "measure": "count",
+      "min": 1,
+      "returnTo": "detail:stage"
+    },
+    {
+      "id": "tier-description",
+      "section": "gear",
+      "description": "The gear tier is described.",
+      "path": "/gear/tiers/*/description",
+      "measure": "words",
+      "min": 30,
+      "returnTo": "detail:tier"
+    },
+    {
+      "id": "slot-why",
+      "section": "gear",
+      "description": "The slot says why the item fits.",
+      "path": "/gear/tiers/*/slots/*/guide/why",
+      "measure": "words",
+      "min": 25,
+      "returnTo": "detail:slot"
+    },
+    {
+      "id": "slot-where",
+      "section": "gear",
+      "description": "The slot says where to get the item.",
+      "path": "/gear/tiers/*/slots/*/guide/whereToGet",
+      "measure": "words",
+      "min": 12,
+      "returnTo": "detail:slot"
+    },
+    {
+      "id": "slot-stats",
+      "section": "gear",
+      "description": "The slot lists what to look for in priority order.",
+      "path": "/gear/tiers/*/slots/*/guide/statPriorities",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "detail:slot"
+    },
+    {
+      "id": "slot-alternatives",
+      "section": "gear",
+      "description": "The slot names alternatives.",
+      "path": "/gear/tiers/*/slots/*/guide/alternativesNotes",
+      "measure": "count",
+      "min": 1,
+      "returnTo": "detail:slot"
+    },
+    {
+      "id": "craft-overview",
+      "section": "crafting",
+      "description": "The crafting plan has an overview of its strategy.",
+      "path": "/crafting/*/guide/overview",
+      "measure": "words",
+      "min": 30,
+      "returnTo": "detail:craft"
+    },
+    {
+      "id": "craft-tips",
+      "section": "crafting",
+      "description": "The crafting plan has tips.",
+      "path": "/crafting/*/guide/tips",
+      "measure": "count",
+      "min": 2,
+      "returnTo": "detail:craft"
+    },
+    {
+      "id": "craft-pitfalls",
+      "section": "crafting",
+      "description": "The crafting plan names pitfalls.",
+      "path": "/crafting/*/guide/pitfalls",
+      "measure": "count",
+      "min": 1,
+      "returnTo": "detail:craft"
+    }
+  ],
+  "questions": [
+    {
+      "id": "summary-concrete",
+      "section": "summary",
+      "question": "Does the introduction explain what the build does, how it defends and how it changes from leveling to the endgame, and name the items that matter?",
+      "returnTo": "S9.summary"
+    },
+    {
+      "id": "mechanics-reasons",
+      "section": "mechanics",
+      "question": "Is every key interaction explained with a reason a player can understand, rather than only named?",
+      "returnTo": "S9.mechanics"
+    },
+    {
+      "id": "stage-concrete",
+      "section": "progression",
+      "question": "Does every stage tell the player concretely what to do with skills, passives and gear, and why, with every gem change justified?",
+      "returnTo": "detail:stage"
+    },
+    {
+      "id": "slot-actionable",
+      "section": "gear",
+      "question": "Can a player act on each slot's advice without guessing: priorities in order, where to get it, and what to use instead?",
+      "returnTo": "detail:slot"
+    },
+    {
+      "id": "craft-followable",
+      "section": "crafting",
+      "question": "Do the crafting guides explain the strategy and its pitfalls so that a player can follow them step by step?",
+      "returnTo": "detail:craft"
+    },
+    {
+      "id": "playstyle-followable",
+      "section": "playstyle",
+      "question": "Could a player follow the rotation and the boss advice in a real fight, with the order of actions clear?",
+      "returnTo": "S9.playstyle"
+    },
+    {
+      "id": "atlas-concrete",
+      "section": "atlas",
+      "question": "Does the endgame advice name concrete phases and priorities instead of general statements?",
+      "returnTo": "S9.atlas"
+    },
+    {
+      "id": "variants-reasoned",
+      "section": "variants",
+      "question": "Does each variant say what changes and why it fits its budget or mode?",
+      "returnTo": "S9.variants"
+    },
+    {
+      "id": "faq-actionable",
+      "section": "faq",
+      "question": "Do the answers address real problems of this build with steps the player can take?",
+      "returnTo": "S9.faq"
+    }
+  ]
+}

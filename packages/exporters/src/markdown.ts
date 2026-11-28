@@ -31,6 +31,11 @@ export function guideToMarkdown(guide: PublishedGuide, resolve: MarkdownResolver
       .map((seg) => {
         if (seg.type === "text") return seg.text;
         if (seg.type === "entity") return name(seg.ref);
+        if (seg.type === "source") {
+          const at = guide.research.findIndex((f) => f.id === seg.id);
+          if (at < 0) missing.push(`source:${seg.id}`);
+          return at < 0 ? `[${seg.id}]` : `[${at + 1}]`;
+        }
         const v = resolve.statValue(seg.ref);
         if (v === undefined) missing.push(`calc:${seg.ref.calcId}/${seg.ref.stat}`);
         return v === undefined ? seg.ref.stat : formatNumber(v);

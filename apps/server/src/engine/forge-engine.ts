@@ -38,9 +38,19 @@ type AttachOutput = z.infer<(typeof ForgeTools)["forge.attach"]["output"]>;
 
 const ATTACH_WINDOW_MS = 60_000;
 
+/** Stage number of the validation (S10): results from it on are made again after a section changed. */
+const VALIDATION_STAGE = 10;
+
 /** Options answering an escalation after a task failed too often. */
 export const ESCALATION_RETRY = "Retry the task";
 export const ESCALATION_ABORT = "Abort the run";
+
+/**
+ * Added to the instructions of a task the player commented on (the comment is in `feedback`).
+ * The rules of the task stay: ids from the catalog, numbers only as calculation references.
+ */
+const COMMENT_INSTRUCTIONS =
+  "The player commented on this section of the finished guide: see the feedback entries of kind comment. `previous` is the section as it stood. Write the section again so that it follows the comment, keep what the comment does not criticise, and do not state numbers the comment asks for: if it needs a measurement, calculate it with the tools and reference the result.";
 
 export interface ForgeEngineOptions {
   store: RunStore;
@@ -173,6 +183,7 @@ export class ForgeEngine {
       nextSeq: 0,
       returns: {},
       returned: {},
+      revisions: [],
     };
     const tx = new Tx(record, this.now);
     tx.emit({ type: "run.phase", phase: "planning" });
@@ -201,10 +212,12 @@ export class ForgeEngine {
   }
 
   /** Something the user did in the app; goes into the feedback queue of the run. */
-  async intervene(runId: string, intervention: UserIntervention): Promise<RunStatus> {
+  async intervene(runId: string, requested: UserIntervention): Promise<RunStatus> {
     return this.mutate(runId, async (tx) => {
       const r = tx.record;
-      this.reviveIfResumable(tx, intervention);
+      this.reviveIfResumable(tx, requested);
+      const intervention =
+        requested.kind === "comment" ? this.openForComment(tx, requested) : requested;
       this.assertActive(r);
       const ctx = this.context(tx);
       const pipelineError = this.pipelineOf(r).validateIntervention?.(intervention, ctx);
@@ -490,6 +503,7 @@ export class ForgeEngine {
         case "done":
           // The publishing step names the guide; pipelines without one get a fresh id.
           r.guideId = guideIdOf(r.results["S11.guide"]?.value) ?? randomUUID();
+          this.stampRevision(r);
           r.current = null;
           tx.setPhase("done");
           tx.emit({ type: "guide.ready", guideId: r.guideId });
@@ -517,6 +531,9 @@ export class ForgeEngine {
           }
           for (const entry of r.interventions) {
             if (entry.delivered) continue;
+            // A section comment belongs to the task of its section only.
+            const { intervention } = entry;
+            if (intervention.kind === "comment" && intervention.section !== spec.key) continue;
             r.current.feedback.push(entry.intervention);
             entry.delivered = true;
           }
@@ -588,7 +605,9 @@ export class ForgeEngine {
       type: spec.type,
       attempt: r.current.attempt,
       maxAttempts: this.options.config.maxAttemptsPerTask,
-      instructions: spec.instructions,
+      instructions: r.current.feedback.some((f) => f.kind === "comment")
+        ? `${spec.instructions} ${COMMENT_INSTRUCTIONS}`
+        : spec.instructions,
       promptVersion: spec.promptVersion,
       context: spec.context,
       feedback: r.current.feedback,
@@ -723,6 +742,70 @@ export class ForgeEngine {
     };
     tx.record.current = null;
     tx.setPhase("failed");
+  }
+
+  /**
+   * A comment on a section of the guide: reopens a finished run and drops only the section, the
+   * validation and the published guide, so Claude redoes that one task. The finished guide is kept
+   * as an earlier revision. Returns the comment with `previous` set by the server.
+   */
+  private openForComment(
+    tx: Tx,
+    comment: Extract<UserIntervention, { kind: "comment" }>,
+  ): Extract<UserIntervention, { kind: "comment" }> {
+    const r = tx.record;
+    if (r.phase === "failed") {
+      throw new ForgeError("run_finished", `Run ${r.runId} failed; redo the failed stage first.`);
+    }
+    if (r.phase !== "done" && r.revisions.length === 0) {
+      throw new ForgeError(
+        "invalid_intervention",
+        "Sections can be commented on once the guide is finished.",
+      );
+    }
+    const stored = r.results[comment.section];
+    // The newest comment on the section carries the text it started from (an older round is stale).
+    const earlier = r.interventions.findLast(
+      (e) => e.intervention.kind === "comment" && e.intervention.section === comment.section,
+    )?.intervention;
+    if (stored === undefined && earlier === undefined) {
+      throw new ForgeError("invalid_intervention", `The guide has no section ${comment.section}.`);
+    }
+    const previous = stored?.value ?? (earlier?.kind === "comment" ? earlier.previous : undefined);
+    if (r.phase === "done") {
+      const guide = r.results["S11.guide"]?.value;
+      if (guide !== undefined) r.revisions.push(guide);
+      tx.setPhase("planning");
+    }
+    // The comment's section is redone; validation and publishing run again on the new text.
+    r.results = Object.fromEntries(
+      Object.entries(r.results).filter(
+        ([key, result]) =>
+          key !== comment.section && (stageNumber(result.type) ?? -1) < VALIDATION_STAGE,
+      ),
+    );
+    r.returns = {};
+    // Findings returned to this section belong to the text that is gone; those of others stay.
+    r.returned = Object.fromEntries(
+      Object.entries(r.returned).filter(
+        ([key]) => key !== comment.section && !comment.section.startsWith(`${key}.`),
+      ),
+    );
+    // An open task of the section stays: it receives this comment next to the earlier ones.
+    const withPrevious = { ...comment };
+    delete withPrevious.previous;
+    return previous === undefined ? withPrevious : { ...withPrevious, previous };
+  }
+
+  /** The published guide of a reopened run is the next revision of the same guide. */
+  private stampRevision(r: RunRecord): void {
+    const stored = r.results["S11.guide"];
+    if (stored === undefined || r.revisions.length === 0) return;
+    const guide = stored.value;
+    if (typeof guide !== "object" || guide === null || Array.isArray(guide)) return;
+    const metadata = guide["metadata"];
+    if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return;
+    stored.value = { ...guide, metadata: { ...metadata, revision: r.revisions.length } };
   }
 
   /**

@@ -205,15 +205,27 @@ export function guideToBuildFile(
           .sort()
           .join(",")}`;
   const itemOf = new Map<string, Stage["state"]["items"][number]["item"]>();
+  // A crafted item without modifiers is the weapon the calculation wears so that attack skills
+  // deal damage (S3), not a recommendation: it is left out and named once per slot.
+  const placeholders = new Set<string>();
   const itemRuns = runs(stages, (s) => {
     const slots = new Map<string, string>();
     for (const e of s.state.items) {
+      if (e.item.kind === "crafted" && e.item.mods.length === 0) {
+        placeholders.add(e.slot);
+        continue;
+      }
       const key = itemKey(e.item);
       slots.set(e.slot, key);
       itemOf.set(key, e.item);
     }
     return slots;
   });
+  for (const slot of placeholders) {
+    omitted.push(
+      `slot ${slot}: an item without modifiers is a measuring placeholder, left out of the file`,
+    );
+  }
   const inventory_slots = itemRuns.flatMap((r): BuildFile["inventory_slots"] => {
     const inventoryId = resolve.slotGameId(r.subject);
     if (inventoryId === undefined) {

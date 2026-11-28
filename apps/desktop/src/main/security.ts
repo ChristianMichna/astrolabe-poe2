@@ -47,6 +47,54 @@ export function isAllowedExternalUrl(url: string, allowedSchemes: readonly strin
   }
 }
 
+/** Longest citation link the shell opens; the guide contract caps links at the same length. */
+const MAX_CITATION_URL_LENGTH = 2048;
+/** Whitespace, control characters and backslashes are read differently by parsers and the OS. */
+function hasUnsafeCharacters(url: string): boolean {
+  return [...url].some((c) => {
+    const code = c.codePointAt(0) ?? 0;
+    return code <= 0x20 || (code >= 0x7f && code <= 0x9f) || c === "\\";
+  });
+}
+
+function isIpOrLocalHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    /^[0-9.]+$/.test(hostname) ||
+    hostname.includes(":")
+  );
+}
+
+/**
+ * Links in guide text (research citations, ADR-0006) open in the player's own browser. Returns the
+ * normalized address to open, or null when the link may not leave the app: https only, no
+ * credentials, no port, no IP address or localhost, and a host (or a subdomain of one) from the
+ * configured list. The parsed form is opened, never the raw string, so the OS sees what was checked.
+ */
+export function citationUrlToOpen(url: string, allowedHosts: readonly string[]): string | null {
+  if (url.length > MAX_CITATION_URL_LENGTH || hasUnsafeCharacters(url)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname;
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.port !== "" ||
+    host === "" ||
+    isIpOrLocalHost(host)
+  ) {
+    return null;
+  }
+  const listed = allowedHosts.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+  return listed ? parsed.href : null;
+}
+
 /** Host of the GitHub API the data release check talks to (see @astrolabe/release-sync). */
 export const GITHUB_API_HOST = "api.github.com";
 

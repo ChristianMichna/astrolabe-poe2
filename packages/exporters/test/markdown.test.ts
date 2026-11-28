@@ -27,6 +27,7 @@ const guide = {
   atlas: { strategy: t("e"), avoidMods: [] },
   variants: [],
   faq: [],
+  research: [],
 } as never as PublishedGuide;
 
 describe("guideToMarkdown", () => {
@@ -43,5 +44,35 @@ describe("guideToMarkdown", () => {
     expect(() =>
       guideToMarkdown(guide, { entityName: () => undefined, statValue: () => undefined }),
     ).toThrow(/gem:g.*calc:x\/CombinedDPS|calc:x\/CombinedDPS.*gem:g/s);
+  });
+
+  it("numbers citations by the order of the guide's research and reports unknown ones", () => {
+    const cited = {
+      ...guide,
+      research: [
+        {
+          id: "boss-order",
+          section: "playstyle",
+          topic: "Boss order",
+          claim: t("c"),
+          source: { url: "https://example.test/", title: "T", retrievedAt: "2026-11-28T00:00:00Z" },
+          entities: [],
+        },
+      ],
+      summary: {
+        ...guide.summary,
+        scalingAxes: [
+          { type: "text", text: "Scales." },
+          { type: "source", id: "boss-order" },
+        ],
+      },
+    } as never as PublishedGuide;
+    const resolvers = { entityName: (r: { id: string }) => r.id, statValue: () => 1 };
+    expect(guideToMarkdown(cited, resolvers)).toContain("Scales.[1]");
+    const dangling = {
+      ...cited,
+      research: [],
+    } as never as PublishedGuide;
+    expect(() => guideToMarkdown(dangling, resolvers)).toThrow(/source:boss-order/);
   });
 });

@@ -1,5 +1,5 @@
 {
-  "$comment": "Game-data tables read from the update servers in CI (F-01, approved by Christian 2026-11-25 for crafting data - currencies, essences, omens - and, per later decision the same day, the level table for the maximum character level; see docs/adr/0005). Table and column names follow the community dat schema (pathofexile-dat). A table with required=false may be absent from a patch; that is recorded in the manifest, never filled in.",
+  "$comment": "Game-data tables read from the update servers in CI (F-01, approved by Christian 2026-11-25 for crafting data - currencies, essences, omens - and, per later decision the same day, the level table for the maximum character level; see docs/adr/0005). Table and column names follow the community dat schema (pathofexile-dat). A table with required=false may be absent from a patch; that is recorded in the manifest, never filled in. itemArt and ItemVisualIdentity: inventory images of the catalog's base and unique items, shown with the credit 'Graphics (c) Grinding Gear Games' (Christian, 2026-11-28; docs/adr/0007).",
   "patchServer": {
     "host": "patch.pathofexile2.com",
     "port": 13060,
@@ -12,7 +12,7 @@
   "tables": [
     {
       "name": "BaseItemTypes",
-      "columns": ["Id", "Name", "ItemClass", "DropLevel"]
+      "columns": ["Id", "Name", "ItemClass", "DropLevel", "ItemVisualIdentity"]
     },
     {
       "name": "ItemClasses",
@@ -58,6 +58,22 @@
     {
       "name": "ExperienceLevels",
       "columns": ["Id", "Level", "Experience"]
+    },
+    {
+      "name": "ItemVisualIdentity",
+      "columns": ["Id", "DDSFile"]
+    },
+    {
+      "name": "UniqueStashLayout",
+      "columns": ["WordsKey", "ItemVisualIdentityKey", "IsAlternateArt"]
+    },
+    {
+      "name": "Words",
+      "columns": ["Text", "Text2"]
     }
-  ]
+  ],
+  "itemArt": {
+    "pathPrefix": "Art/2DItems/",
+    "maxFailedShare": 0.2
+  }
 }

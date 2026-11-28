@@ -19,8 +19,13 @@ import {
   type OptimizerConfig,
   type TreeOptimizeResult,
 } from "@astrolabe/optimizer";
-import { ArchetypeEvaluation, BuildState } from "@astrolabe/contracts/build";
-import type { Ascendancy, CharacterClass, PassiveNode } from "@astrolabe/contracts/catalog";
+import { ArchetypeEvaluation, BuildState, type EquippedItem } from "@astrolabe/contracts/build";
+import type {
+  Ascendancy,
+  BaseItem,
+  CharacterClass,
+  PassiveNode,
+} from "@astrolabe/contracts/catalog";
 import type { AscendancyId, PassiveNodeId } from "@astrolabe/contracts/common";
 import type { CalcProfileId } from "@astrolabe/contracts/common";
 import type { CalcPort } from "../ports/calc.js";
@@ -37,6 +42,8 @@ export interface SkeletonSettings {
   supportCount: number;
   calcProfiles: readonly CalcProfileId[];
   objective: { weights: Record<string, number>; floors: Record<string, number> };
+  /** See `s3.placeholderWeapon` in config/agents/stages.json. */
+  placeholderWeapon?: { slot: string; rarity: string } | undefined;
 }
 
 /** Settings of the progression (config/agents/stages.json → s6, without the stage table). */
@@ -91,10 +98,11 @@ export interface PobSkeletonOptions {
  * S3 on Path of Building: main skill with the profile's first supports on the
  * candidate's class and ascendancy, then a short tree optimisation within
  * the configured point budget, then the full measurement per calc profile.
- * The skeleton has no items; gear comes in later stages.
+ * The skeleton wears at most a placeholder weapon (`s3.placeholderWeapon`); gear comes in later stages.
  */
 export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
   private readonly graphs = new Map<string, TreeGraph>();
+  private readonly weapons = new Map<string, EquippedItem[]>();
 
   constructor(private readonly options: PobSkeletonOptions) {}
 
@@ -119,6 +127,94 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
         ? {}
         : { floorsFromMetrics: minionMetricFloors(minion, objective.floorsFromMetrics) }),
     };
+  }
+
+  /**
+   * The weapon the skeleton wears so that attack skills deal damage: of every weapon class the
+   * slot accepts, the base with the lowest requirement; the one PoB measures best for the main
+   * skill wins, but only if it beats the build without a weapon (spells and minions need none).
+   */
+  private async placeholderItems(
+    base: BuildState,
+    job: {
+      request: SkeletonRequest["request"];
+      profile: SkeletonRequest["profile"];
+      calcProfile: CalcProfileId;
+    },
+  ): Promise<EquippedItem[]> {
+    const wanted = this.options.settings.placeholderWeapon;
+    if (wanted === undefined) return [];
+    const key = `${wanted.slot}|${job.profile.mainSkillId}`;
+    const known = this.weapons.get(key);
+    if (known !== undefined) return known;
+    const { catalog, logger } = this.options;
+    const slot = catalog.release?.itemSlots?.slots.find((s) => s.id === wanted.slot);
+    if (slot === undefined) {
+      throw new Error(`The release has no item slot ${wanted.slot} for the placeholder weapon`);
+    }
+    const rarities = catalog.release?.rarities?.rarities ?? [];
+    if (!rarities.some((r) => r.id === wanted.rarity)) {
+      throw new Error(`The release has no rarity ${wanted.rarity} for the placeholder weapon`);
+    }
+    const weights = this.objectiveFor(
+      this.options.settings.objective,
+      job.profile.mainSkillId,
+    ).weights;
+    const score = async (items: EquippedItem[]): Promise<number> => {
+      const state = BuildState.parse({ ...base, items });
+      const outcomes = await this.options.calc.calculate({
+        state,
+        profiles: [job.calcProfile],
+        overrides: job.request.calcOverrides,
+      });
+      const outcome = outcomes[job.calcProfile];
+      if (outcome?.status !== "ok") {
+        throw new Error(
+          `The engine could not measure the placeholder weapon (profile ${job.calcProfile})`,
+        );
+      }
+      const loaded = await this.options.calc.getResult(outcome.calcId);
+      if (loaded === undefined)
+        throw new Error(`The result ${outcome.calcId} of the placeholder weapon is gone`);
+      return Object.entries(weights).reduce((sum, [stat, w]) => {
+        const value = loaded.stats[stat];
+        if (value === undefined) {
+          throw new Error(`The engine reported no ${stat}, so no placeholder weapon can be chosen`);
+        }
+        return sum + w * value;
+      }, 0);
+    };
+    const bases = catalog.list("baseItem").map((e) => e.entity as BaseItem);
+    let best: { score: number; items: EquippedItem[] } = { score: await score([]), items: [] };
+    for (const itemClass of slot.itemClasses) {
+      const lowest = bases
+        .filter((b) => b.itemClass === itemClass && !b.tags.includes("unique"))
+        .sort(
+          (a, b) =>
+            (a.requirements.level ?? 0) - (b.requirements.level ?? 0) || a.id.localeCompare(b.id),
+        )[0];
+      if (lowest === undefined) continue;
+      const items: EquippedItem[] = [
+        {
+          slot: wanted.slot,
+          item: {
+            kind: "crafted",
+            baseItemId: lowest.id,
+            rarity: wanted.rarity,
+            mods: [],
+            socketables: [],
+          },
+        },
+      ];
+      const value = await score(items);
+      if (value > best.score) best = { score: value, items };
+    }
+    logger.info("placeholder weapon", {
+      mainSkillId: job.profile.mainSkillId,
+      chosen: best.items[0]?.item.kind === "crafted" ? best.items[0].item.baseItemId : null,
+    });
+    this.weapons.set(key, best.items);
+    return best.items;
   }
 
   async evaluate(input: SkeletonRequest): Promise<ArchetypeEvaluation> {
@@ -147,7 +243,15 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
       items: [],
       config: {},
     });
-    const result = await this.optimizeFrom(empty, {
+    const withWeapon = BuildState.parse({
+      ...empty,
+      items: await this.placeholderItems(empty, {
+        request: input.request,
+        profile,
+        calcProfile: settings.calcProfiles[0] as CalcProfileId,
+      }),
+    });
+    const result = await this.optimizeFrom(withWeapon, {
       request: input.request,
       profile,
       candidateKey: candidate.key,
@@ -157,7 +261,7 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
       calcProfile: settings.calcProfiles[0] as CalcProfileId,
     });
     const skeleton = BuildState.parse({
-      ...empty,
+      ...withWeapon,
       tree: { allocated: result.allocated.map((nodeId) => ({ nodeId })), ascendancy: [] },
     });
     const calcs = await this.options.calc.calculate({

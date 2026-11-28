@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { startCalcPool } from "@astrolabe/calc";
 import { loadCatalogRelease } from "./catalog/memory-catalog.js";
@@ -107,6 +108,7 @@ chooseCalc(catalogDir)
               appVersion: "dev",
             },
           }),
+      pobRoot: join(values["pob-root"], ".pob", "PathOfBuilding-PoE2"),
       ...(values["releases-dir"] === undefined ? {} : { releasesDir: values["releases-dir"] }),
       allowedOrigins: values.origin,
       tokenFile: values["token-file"],

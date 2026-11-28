@@ -143,7 +143,7 @@ describe("guide page", () => {
     );
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/guides/${GUIDE_ID}/view`);
     // the fixture's calc segment resolves to the stored value
-    expect(screen.getAllByText("1,234.5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1,235").length).toBeGreaterThan(0);
     expect(screen.getByText(/passiveNode:fixture_node_1/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save as .build file" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Level 1–10/ })).toBeTruthy();
@@ -154,17 +154,18 @@ describe("guide page", () => {
     window.location.hash = `#/guide/${GUIDE_ID}`;
     render(<App />);
     expect((await screen.findAllByText("FixtureStatA")).length).toBeGreaterThan(0);
-    expect(screen.queryByText("1,234.5")).toBeNull();
+    expect(screen.queryByText("1,235")).toBeNull();
   });
 
   it("shows the gear plan's items with catalog texts and says what is unknown", async () => {
     vi.stubGlobal("fetch", () => json(view));
     window.location.hash = `#/guide/${GUIDE_ID}`;
     render(<App />);
-    expect(await screen.findByText("Fixture Unique Name")).toBeTruthy();
-    expect(screen.getByText("Implicit text")).toBeTruthy();
-    expect(screen.getByText("Unique line")).toBeTruthy();
-    expect(screen.getByText(/Unknown modifier \(Fixture\/NoText\)/)).toBeTruthy();
+    // The paper doll holds the card for hovering and the selected slot shows it again below.
+    expect((await screen.findAllByText("Fixture Unique Name")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Implicit text").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unique line").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Unknown modifier \(Fixture\/NoText\)/).length).toBeGreaterThan(0);
   });
 
   it("shows the crafting flow with uncalibrated numbers as such and measured ones with their source", async () => {
@@ -234,6 +235,25 @@ describe("guide page", () => {
     expect(await screen.findByText(/Tree is down\./)).toBeTruthy();
   });
 
+  it("says that the node pictures are missing and keeps the tree", async () => {
+    vi.stubGlobal("fetch", (url: string) =>
+      url.endsWith("/api/tree")
+        ? json({
+            dataReleaseId: view.catalogReleaseId,
+            passiveNodes: [],
+            passiveGroups: [],
+            skipped: [],
+          })
+        : url.includes("/api/tree/icons")
+          ? json({ error: { code: "icons_unavailable", message: "No sheets here." } }, 503)
+          : json(view),
+    );
+    window.location.hash = `#/guide/${GUIDE_ID}`;
+    render(<App />);
+    expect(await screen.findByText(/Node pictures are not available/)).toBeTruthy();
+    expect(screen.getByText(/No sheets here\./)).toBeTruthy();
+  });
+
   it("does not draw a tree of another release than the guide was read with", async () => {
     vi.stubGlobal("fetch", (url: string) =>
       url.endsWith("/api/tree")
@@ -288,8 +308,8 @@ describe("guide page", () => {
     window.location.hash = `#/guide/${GUIDE_ID}`;
     render(<App />);
     expect(await screen.findByText("1,234")).toBeTruthy();
-    expect(screen.getByText("Minion damage per second")).toBeTruthy();
-    expect(screen.queryByText("Damage per second")).toBeNull();
+    expect(screen.getByText("Minion damage per second", { selector: "dt" })).toBeTruthy();
+    expect(screen.queryByText("Damage per second", { selector: "dt" })).toBeNull();
   });
 
   it("keeps the player's damage row and hides the minion row without minion stats", async () => {
@@ -304,8 +324,8 @@ describe("guide page", () => {
     vi.stubGlobal("fetch", () => json({ ...view, guide, results: { "calc-1": result } }));
     window.location.hash = `#/guide/${GUIDE_ID}`;
     render(<App />);
-    expect(await screen.findByText("Damage per second")).toBeTruthy();
-    expect(screen.queryByText("Minion damage per second")).toBeNull();
+    expect(await screen.findByText("Damage per second", { selector: "dt" })).toBeTruthy();
+    expect(screen.queryByText("Minion damage per second", { selector: "dt" })).toBeNull();
   });
 
   it("shows a failed or missing calculation of a stage as an error", async () => {

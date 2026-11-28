@@ -70,16 +70,22 @@
 
 .ef-notes > p {
   counter-increment: ef-note;
-  display: grid;
-  grid-template-columns: 2.5em 1fr;
-  gap: var(--ef-space-2);
+  /* Block flow, not a grid: inline pieces (names, numbers) must stay in one line of text. */
+  position: relative;
+  padding-left: calc(2.5em + var(--ef-space-2));
   margin: 0;
 }
 
 .ef-notes > p::before {
   content: counter(ef-note, decimal-leading-zero);
-  padding-top: 0.15em;
+  position: absolute;
+  left: 0;
+  top: 0.15em;
   font-family: var(--ef-font-mono);
   font-size: var(--ef-text-sm);
   color: var(--ef-color-verdigris-dim);
+}
+
+.ef-notes + .ef-notes {
+  margin-top: var(--ef-space-3);
 }

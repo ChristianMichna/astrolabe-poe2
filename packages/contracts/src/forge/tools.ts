@@ -3,6 +3,7 @@ import { EntityRef } from "../common/ids.js";
 import { JsonValue } from "../common/json.js";
 import { Finding, TaskType } from "../build/findings.js";
 import { RichText } from "../build/text.js";
+import { GuideSectionKey, GUIDE_COMMENT_MAX_LENGTH } from "../guide/comments.js";
 
 /*
  * MCP tools of the forge loop (ADR-0003): Claude in the user's own client
@@ -30,6 +31,18 @@ export const UserIntervention = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("reject"), entity: EntityRef }),
   z.object({ kind: z.literal("adjust"), request: z.string().min(1).max(2000) }),
   z.object({ kind: z.literal("redoStage"), stage: TaskType }),
+  /**
+   * The player commented on one section of the finished guide: redo that section with this
+   * request. Only the task of `section` sees it. `previous` is the section as it stood; the
+   * server sets it, a value sent by the client is replaced.
+   */
+  z.object({
+    kind: z.literal("comment"),
+    commentId: z.string().min(1).max(64),
+    section: GuideSectionKey,
+    text: z.string().min(1).max(GUIDE_COMMENT_MAX_LENGTH),
+    previous: JsonValue.optional(),
+  }),
   z.object({ kind: z.literal("pause") }),
   z.object({ kind: z.literal("resume") }),
   z.object({ kind: z.literal("answer"), askId: z.string().min(1), answer: z.string().max(2000) }),

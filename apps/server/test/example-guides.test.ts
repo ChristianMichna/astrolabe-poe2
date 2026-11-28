@@ -1,9 +1,10 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { GUIDE_FILE_FORMAT, collectCalcIds } from "@astrolabe/contracts/guide";
+import { GUIDE_FILE_FORMAT, GuideFile, collectCalcIds } from "@astrolabe/contracts/guide";
+import { QualityRubric, rubricFindings, type GuideDraft } from "@astrolabe/agents";
 import { importExampleGuides } from "../src/guides/example-guides.js";
 import { createMemoryLogger } from "../src/logger.js";
 import { RunStore } from "../src/store/run-store.js";
@@ -117,5 +118,28 @@ describe("the guides shipped in examples/guides", () => {
     );
     expect(outcome.failed).toEqual([]);
     expect(outcome.imported).toBeGreaterThan(0);
+  });
+});
+
+describe("the quality of the guides shipped in examples/guides", () => {
+  const rubric = QualityRubric.parse(
+    JSON.parse(
+      readFileSync(new URL("../../../config/agents/guide-rubric.json", import.meta.url), "utf8"),
+    ),
+  );
+  const dir = fileURLToPath(new URL("../../../examples/guides", import.meta.url));
+  const names = readdirSync(dir).filter((n) => n.endsWith(".json"));
+
+  it("ships example guides", () => {
+    expect(names.length).toBeGreaterThan(0);
+  });
+
+  it.each(names)("%s meets every measured rule of the guide rubric", (name) => {
+    const { guide: shipped } = GuideFile.parse(JSON.parse(readFileSync(join(dir, name), "utf8")));
+    const draft: Record<string, unknown> = { ...shipped };
+    delete draft["metadata"];
+    delete draft["validation"];
+    const found = rubricFindings(draft as unknown as GuideDraft, rubric);
+    expect(found.map((f) => `${f.code} ${f.path ?? ""}`)).toEqual([]);
   });
 });

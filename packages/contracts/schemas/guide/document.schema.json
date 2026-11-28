@@ -365,6 +365,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -496,6 +513,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -607,6 +641,23 @@
                 "required": [
                   "type",
                   "ref"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
                 ]
               }
             ]
@@ -721,6 +772,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -826,6 +894,23 @@
                   "required": [
                     "type",
                     "ref"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
                   ]
                 }
               ]
@@ -966,6 +1051,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -1086,6 +1188,23 @@
                 "required": [
                   "type",
                   "ref"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
                 ]
               }
             ]
@@ -1224,6 +1343,23 @@
                       "required": [
                         "type",
                         "ref"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ]
                     }
                   ]
@@ -1369,6 +1505,23 @@
                         "type",
                         "ref"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ]
                     }
                   ]
                 }
@@ -1489,6 +1642,23 @@
                         "type",
                         "ref"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ]
                     }
                   ]
                 }
@@ -1597,6 +1767,23 @@
                 "required": [
                   "type",
                   "ref"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
                 ]
               }
             ]
@@ -1735,6 +1922,23 @@
                       "required": [
                         "type",
                         "ref"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ]
                     }
                   ]
@@ -2548,6 +2752,23 @@
                           "type",
                           "ref"
                         ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "source"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "id"
+                        ]
                       }
                     ]
                   }
@@ -2653,6 +2874,23 @@
                         "required": [
                           "type",
                           "ref"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "source"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "id"
                         ]
                       }
                     ]
@@ -2793,6 +3031,23 @@
                               "type",
                               "ref"
                             ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "source"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ]
                           }
                         ]
                       }
@@ -2903,6 +3158,23 @@
                           "required": [
                             "type",
                             "ref"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "source"
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "id"
                           ]
                         }
                       ]
@@ -3041,6 +3313,23 @@
                                 "required": [
                                   "type",
                                   "ref"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
                                 ]
                               }
                             ]
@@ -3225,6 +3514,23 @@
                                   "type",
                                   "ref"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
+                                ]
                               }
                             ]
                           }
@@ -3338,6 +3644,23 @@
                               "type",
                               "ref"
                             ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "source"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ]
                           }
                         ]
                       }
@@ -3444,6 +3767,23 @@
                               "type",
                               "ref"
                             ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "source"
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ]
                           }
                         ]
                       }
@@ -3546,6 +3886,23 @@
                           "required": [
                             "type",
                             "ref"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "const": "source"
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "id"
                           ]
                         }
                       ]
@@ -3746,6 +4103,23 @@
                       "required": [
                         "type",
                         "ref"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ]
                     }
                   ]
@@ -4579,6 +4953,23 @@
                                   "type",
                                   "ref"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
+                                ]
                               }
                             ]
                           }
@@ -4693,6 +5084,23 @@
                                         "type",
                                         "ref"
                                       ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "const": "source"
+                                        },
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "id"
+                                      ]
                                     }
                                   ]
                                 }
@@ -4802,6 +5210,23 @@
                                   "type",
                                   "ref"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
+                                ]
                               }
                             ]
                           }
@@ -4907,6 +5332,23 @@
                                     "type",
                                     "ref"
                                   ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "const": "source"
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "id"
+                                  ]
                                 }
                               ]
                             }
@@ -5009,6 +5451,23 @@
                                 "required": [
                                   "type",
                                   "ref"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
                                 ]
                               }
                             ]
@@ -5945,6 +6404,23 @@
                         "required": [
                           "type",
                           "ref"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "source"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "id"
                         ]
                       }
                     ]
@@ -6983,6 +7459,23 @@
                                   "type",
                                   "ref"
                                 ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "const": "source"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id"
+                                ]
                               }
                             ]
                           }
@@ -7418,6 +7911,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -7522,6 +8032,23 @@
                       "required": [
                         "type",
                         "ref"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ]
                     }
                   ]
@@ -7628,6 +8155,23 @@
                           "type",
                           "ref"
                         ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "source"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "id"
+                        ]
                       }
                     ]
                   }
@@ -7733,6 +8277,23 @@
                         "required": [
                           "type",
                           "ref"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "source"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "id"
                         ]
                       }
                     ]
@@ -7856,6 +8417,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -7970,6 +8548,23 @@
                         "type",
                         "ref"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ]
                     }
                   ]
                 }
@@ -8082,6 +8677,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -8188,6 +8800,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -8291,6 +8920,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -8392,6 +9038,23 @@
                 "required": [
                   "type",
                   "ref"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
                 ]
               }
             ]
@@ -8495,6 +9158,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -8596,6 +9276,23 @@
                 "required": [
                   "type",
                   "ref"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
                 ]
               }
             ]
@@ -8734,6 +9431,23 @@
                         "type",
                         "ref"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ]
                     }
                   ]
                 }
@@ -8854,6 +9568,23 @@
                   "type",
                   "ref"
                 ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "source"
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ]
               }
             ]
           }
@@ -8968,6 +9699,23 @@
                         "type",
                         "ref"
                       ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
+                      ]
                     }
                   ]
                 }
@@ -9079,6 +9827,23 @@
                   "required": [
                     "type",
                     "ref"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
                   ]
                 }
               ]
@@ -9193,6 +9958,23 @@
                       "required": [
                         "type",
                         "ref"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "source"
+                        },
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id"
                       ]
                     }
                   ]
@@ -9386,6 +10168,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -9500,6 +10299,23 @@
                     "type",
                     "ref"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
                 }
               ]
             }
@@ -9601,6 +10417,23 @@
                   "required": [
                     "type",
                     "ref"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
                   ]
                 }
               ]
@@ -9707,6 +10540,23 @@
                       "type",
                       "ref"
                     ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "source"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ]
                   }
                 ]
               }
@@ -9716,6 +10566,224 @@
         "required": [
           "question",
           "answer"
+        ]
+      }
+    },
+    "research": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "mechanics",
+              "progression",
+              "gear",
+              "crafting",
+              "playstyle",
+              "atlas",
+              "variants",
+              "faq"
+            ]
+          },
+          "topic": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "claim": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "text"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "calc"
+                    },
+                    "ref": {
+                      "type": "object",
+                      "properties": {
+                        "calcId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128,
+                          "description": "Id of a single PoB calculation"
+                        },
+                        "stat": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "calcId",
+                        "stat"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "ref"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "entity"
+                    },
+                    "ref": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "baseItem",
+                            "mod",
+                            "uniqueItem",
+                            "gem",
+                            "passiveNode",
+                            "passiveGroup",
+                            "characterClass",
+                            "ascendancy",
+                            "craftingAction",
+                            "statTranslation"
+                          ],
+                          "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 512
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "ref"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "source"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ]
+                }
+              ]
+            }
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "maxLength": 2048,
+                "pattern": "^https:\\/\\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?:[/?#][^\\s\\\\]*)?$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "retrievedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO 8601 timestamp"
+              }
+            },
+            "required": [
+              "url",
+              "title",
+              "retrievedAt"
+            ]
+          },
+          "entities": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "baseItem",
+                    "mod",
+                    "uniqueItem",
+                    "gem",
+                    "passiveNode",
+                    "passiveGroup",
+                    "characterClass",
+                    "ascendancy",
+                    "craftingAction",
+                    "statTranslation"
+                  ],
+                  "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "section",
+          "topic",
+          "claim",
+          "source"
         ]
       }
     },

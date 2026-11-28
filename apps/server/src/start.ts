@@ -1,4 +1,6 @@
+import { treeIconSource } from "./tree-icons/source.js";
 import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { parseOptimizerConfig } from "@astrolabe/optimizer";
@@ -59,6 +61,8 @@ export interface StartOptions {
   economy?: EconomySettings;
   /** Directory with unpacked data releases (one folder per release id); enables guide_revalidate. */
   releasesDir?: string;
+  /** The PathOfBuilding-PoE2 folder (holds `src/`); its passive tree sheets give the node icons (`/api/tree/icons.*`). */
+  pobRoot?: string;
   /** Folder of guide files (`GuideFile`) imported on start when the store lacks them (example guides). */
   exampleGuidesDir?: string;
   allowedOrigins: readonly string[];
@@ -247,11 +251,14 @@ async function startServerOwningPool(
           logger: options.logger,
         });
   const app = createApp({
+    assetsDir: options.catalogDir,
     ...(craft === undefined ? {} : { craft }),
     ...(economy === undefined ? {} : { economy: economy.price }),
     ...(guideRevalidate === undefined ? {} : { guideRevalidate }),
     ...(sweeper === undefined ? {} : { guideSweep: sweeper }),
+    ...(options.pobRoot === undefined ? {} : { treeIcons: treeIconSource(options.pobRoot) }),
     findGuide: (id) => store.findGuide(id),
+    findRunByGuide: (id) => store.findRunByGuideId(id),
     listGuideIds: () => store.listGuideIds(),
     guideOrigin: (id) => store.guideOrigin(id),
     importGuide: (file, at) => store.importGuide(file, at),
@@ -300,6 +307,45 @@ async function loadStageConfig(path: string): Promise<StageConfig> {
     raw = JSON.parse(await readFile(path, "utf8"));
   } catch (error) {
     throw new Error(`Cannot read stage config ${path}`, { cause: error });
+  }
+  // The quality rubric is a file of its own next to the stage config; it is read into the config.
+  const s9 = (
+    raw as {
+      s9?: {
+        rubricFile?: unknown;
+        rubric?: unknown;
+        guideSpecFile?: unknown;
+        guideSpec?: unknown;
+        researchFile?: unknown;
+        research?: unknown;
+      };
+    } | null
+  )?.s9;
+  if (s9 !== undefined && typeof s9.rubricFile === "string") {
+    const rubricPath = join(dirname(path), s9.rubricFile);
+    try {
+      s9.rubric = JSON.parse(await readFile(rubricPath, "utf8"));
+    } catch (error) {
+      throw new Error(`Cannot read guide rubric ${rubricPath}`, { cause: error });
+    }
+  }
+  // The guide specification is a file of its own too; it is handed to Claude per task.
+  if (s9 !== undefined && typeof s9.guideSpecFile === "string") {
+    const specPath = join(dirname(path), s9.guideSpecFile);
+    try {
+      s9.guideSpec = JSON.parse(await readFile(specPath, "utf8"));
+    } catch (error) {
+      throw new Error(`Cannot read guide specification ${specPath}`, { cause: error });
+    }
+  }
+  // The research settings are a file of their own too.
+  if (s9 !== undefined && typeof s9.researchFile === "string") {
+    const researchPath = join(dirname(path), s9.researchFile);
+    try {
+      s9.research = JSON.parse(await readFile(researchPath, "utf8"));
+    } catch (error) {
+      throw new Error(`Cannot read research settings ${researchPath}`, { cause: error });
+    }
   }
   const parsed = StageConfig.safeParse(raw);
   if (!parsed.success) {

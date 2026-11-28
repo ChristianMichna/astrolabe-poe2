@@ -148,6 +148,12 @@ a.nav__link:hover {
   max-width: var(--ef-page-max-width);
 }
 
+/* The guide uses the width of large monitors: the page grows to a wide cap, and from there the
+   reading sections sit side by side while the wide ones (gear, tree, stages) keep the full row. */
+.page--guide {
+  max-width: var(--ef-page-max-width-guide);
+}
+
 .page--wide {
   max-width: none;
   gap: var(--ef-space-5);
@@ -562,6 +568,14 @@ code {
 .guide-unresolved {
   border-bottom: 1px dashed var(--ef-color-warning);
 }
+.guide-sources {
+  display: grid;
+  gap: var(--ef-space-4);
+  padding-left: var(--ef-space-5);
+}
+.guide-source-host {
+  color: var(--ef-color-text-muted);
+}
 
 .gear-grid {
   display: grid;
@@ -664,4 +678,546 @@ code {
 
 .gear-slot__notes h4 {
   margin: var(--ef-space-3, 0.75rem) 0 0.25rem;
+}
+
+/* Guide page: index rail, sections, power curve, gear matrix */
+.guide-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: var(--ef-space-6);
+}
+
+.guide-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ef-space-6);
+  min-width: 0;
+}
+
+.guide-page > * {
+  grid-column: 1;
+  min-width: 0;
+}
+
+@media (width >= 1900px) {
+  .guide-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--ef-space-6);
+    align-items: start;
+  }
+
+  .guide-main > * {
+    grid-column: 1 / -1;
+  }
+
+  .guide-main > .guide-section--flow {
+    grid-column: auto;
+  }
+}
+
+@media (width >= 3000px) {
+  .page--guide {
+    max-width: none;
+  }
+
+  .guide-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.guide-section {
+  display: grid;
+  gap: var(--ef-space-4);
+  scroll-margin-top: calc(var(--ef-space-4) + 3.5rem);
+}
+
+.guide-nav {
+  display: none;
+}
+
+@media (width >= 1100px) {
+  .guide-page {
+    grid-template-columns: 11rem minmax(0, 1fr);
+  }
+
+  .guide-page > * {
+    grid-column: 2;
+  }
+
+  .guide-page > .guide-nav {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / span 30;
+    align-self: start;
+    position: sticky;
+    top: var(--ef-space-4);
+  }
+}
+
+.guide-nav ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--ef-color-line);
+}
+
+.guide-nav__link {
+  display: flex;
+  gap: var(--ef-space-2);
+  padding: var(--ef-space-2) var(--ef-space-3);
+  color: var(--ef-color-text-muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  margin-left: -1px;
+}
+
+.guide-nav__link:hover {
+  color: var(--ef-color-text-strong);
+}
+
+.guide-nav__link--active {
+  color: var(--ef-color-verdigris-bright);
+  border-left-color: var(--ef-color-verdigris);
+}
+
+.guide-nav__index {
+  font-family: var(--ef-font-mono);
+  color: var(--ef-color-text-faint);
+}
+
+.power-curve {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--ef-space-4);
+}
+
+.power-curve__chart {
+  margin: 0;
+}
+
+.power-curve__chart figcaption {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ef-color-text-muted);
+}
+
+.power-curve__chart strong {
+  font-family: var(--ef-font-mono);
+  color: var(--ef-color-text-strong);
+}
+
+.power-curve__chart > svg {
+  width: 100%;
+  height: auto;
+}
+
+.power-curve__axis {
+  stroke: var(--ef-color-line-strong);
+  stroke-width: 1;
+}
+
+.power-curve__line {
+  fill: none;
+  stroke: var(--ef-color-verdigris);
+  stroke-width: 1.5;
+}
+
+.power-curve__dot {
+  fill: var(--ef-color-ground);
+  stroke: var(--ef-color-verdigris-bright);
+  stroke-width: 1.5;
+}
+
+.power-curve__tick {
+  fill: var(--ef-color-text-faint);
+  font-family: var(--ef-font-mono);
+  font-size: 9px; /* units of the chart viewBox, not screen pixels */
+}
+
+.gear-matrix {
+  display: grid;
+  border: 1px solid var(--ef-color-line);
+}
+
+.gear-matrix__row {
+  display: grid;
+  grid-template-columns: 9rem repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--ef-space-2);
+  padding: var(--ef-space-2) var(--ef-space-3);
+  border-top: 1px solid var(--ef-color-engraving);
+}
+
+.gear-matrix__row:first-child {
+  border-top: 0;
+}
+
+.gear-matrix__row--head {
+  color: var(--ef-color-text-faint);
+  background: var(--ef-color-surface-2);
+}
+
+.gear-matrix__how {
+  color: var(--ef-color-text-muted);
+}
+
+.gear-matrix__none {
+  color: var(--ef-color-text-faint);
+}
+
+.guide-nav__link:focus-visible {
+  outline: 1px solid var(--ef-color-verdigris);
+  outline-offset: 2px;
+}
+
+.guide-section:focus {
+  outline: none;
+}
+
+/* ---------------------------------------------------------------- stage picker */
+
+.stage-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--ef-space-3);
+  padding: var(--ef-space-2) var(--ef-space-3);
+  border: var(--ef-hairline) solid var(--ef-color-line);
+  background: var(--ef-color-ground);
+}
+
+.stage-bar__label {
+  flex: none;
+  font-family: var(--ef-font-mono);
+  font-size: var(--ef-text-xs);
+  letter-spacing: var(--ef-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ef-color-text-faint);
+}
+
+.stage-bar__list {
+  display: flex;
+  gap: var(--ef-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.stage-bar__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--ef-space-1) var(--ef-space-3);
+  border: var(--ef-hairline) solid var(--ef-color-line);
+  background: transparent;
+  color: var(--ef-color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stage-bar__stage:hover {
+  color: var(--ef-color-text-strong);
+}
+
+.stage-bar__stage[aria-pressed="true"] {
+  border-color: var(--ef-color-verdigris);
+  color: var(--ef-color-text-strong);
+}
+
+.stage-bar__stage:focus-visible {
+  outline: 1px solid var(--ef-color-verdigris);
+  outline-offset: 2px;
+}
+
+.stage-bar__levels {
+  font-family: var(--ef-font-mono);
+  font-size: var(--ef-text-xs);
+  color: var(--ef-color-text-faint);
+}
+
+/* Gear paper doll: framed cells in the arrangement of config/web/gear-layout.json */
+.gear-doll {
+  --gear-gap: var(--ef-space-2);
+  --gear-cell-max: 7rem;
+  --gear-icon-max: 4.5rem;
+  margin-bottom: var(--ef-space-5);
+  container-type: inline-size;
+}
+
+.gear-doll__body,
+.gear-doll__extras {
+  /* square cells that shrink with the panel: the configured columns, never larger than --gear-cell-max */
+  --gear-cell: min(
+    var(--gear-cell-max),
+    calc((100cqw - (var(--gear-cols) - 1) * var(--gear-gap)) / var(--gear-cols))
+  );
+  display: grid;
+  gap: var(--gear-gap);
+  justify-content: center;
+}
+
+.gear-doll__extras {
+  grid-auto-flow: column;
+  grid-auto-columns: var(--gear-cell);
+  grid-auto-rows: var(--gear-cell);
+  margin-top: var(--ef-space-4);
+  padding-top: var(--ef-space-4);
+  border-top: var(--ef-hairline) solid var(--ef-color-line);
+}
+
+.gear-cell {
+  --gear-color: var(--ef-color-line);
+  position: relative;
+  min-width: 0;
+  display: flex;
+}
+
+.gear-cell[data-rarity="normal"] {
+  --gear-color: var(--ef-color-rarity-normal);
+}
+.gear-cell[data-rarity="magic"] {
+  --gear-color: var(--ef-color-rarity-magic);
+}
+.gear-cell[data-rarity="rare"] {
+  --gear-color: var(--ef-color-rarity-rare);
+}
+.gear-cell[data-rarity="unique"] {
+  --gear-color: var(--ef-color-rarity-unique);
+}
+
+.gear-cell__frame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: var(--ef-space-1);
+  text-align: left;
+  color: var(--ef-color-text);
+  border: var(--ef-hairline) solid color-mix(in srgb, var(--gear-color) 55%, transparent);
+  background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      color-mix(in srgb, var(--gear-color) 20%, transparent),
+      transparent 70%
+    ),
+    var(--ef-color-inset);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.gear-cell__frame:hover {
+  border-color: var(--gear-color);
+}
+
+.gear-cell__frame[aria-pressed="true"] {
+  border-color: var(--gear-color);
+  box-shadow: inset 0 0 0 1px var(--gear-color);
+}
+
+.gear-cell__frame:focus-visible {
+  outline: 2px solid var(--ef-color-verdigris);
+  outline-offset: 2px;
+}
+
+.gear-cell__icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(55%, var(--gear-icon-max));
+  aspect-ratio: 1;
+  transform: translate(-50%, -58%);
+  color: color-mix(in srgb, var(--gear-color) 80%, transparent);
+  pointer-events: none;
+}
+
+/* The item's own image: fills the cell, keeps its proportions, sits behind the labels. */
+.gear-cell__art {
+  position: absolute;
+  inset: var(--ef-space-4) var(--ef-space-1) var(--ef-space-5);
+  width: calc(100% - 2 * var(--ef-space-1));
+  height: calc(100% - var(--ef-space-4) - var(--ef-space-5));
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.gear-doll__credit {
+  margin: var(--ef-space-3) 0 0;
+  text-align: center;
+  font-family: var(--ef-font-mono);
+  font-size: var(--ef-text-3xs);
+  letter-spacing: var(--ef-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ef-color-text-faint);
+}
+
+.gear-cell[data-size="small"] .gear-cell__icon {
+  width: 38%;
+  top: var(--ef-space-5);
+  transform: translateX(-50%);
+}
+
+.gear-cell[data-rarity="empty"] .gear-cell__icon {
+  opacity: 0.35;
+}
+
+.gear-cell__slot,
+.gear-cell__name,
+.gear-cell__base {
+  position: relative;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gear-cell__slot {
+  -webkit-line-clamp: 1;
+  font-family: var(--ef-font-mono);
+  font-size: var(--ef-text-3xs);
+  letter-spacing: var(--ef-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ef-color-text-faint);
+}
+
+.gear-cell__name {
+  -webkit-line-clamp: 2;
+  font-family: var(--ef-font-display);
+  font-size: var(--ef-text-xs);
+  line-height: 1.2;
+  color: var(--gear-color);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px var(--ef-color-inset);
+}
+
+/* The base type is in the hover card; the cell stays calm. */
+.gear-cell__base {
+  display: none;
+}
+
+.gear-cell__hover {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  /* The card never takes the pointer, so the next slot can be hovered straight away. */
+  pointer-events: none;
+}
+
+.gear-cell__hover--down {
+  top: 0;
+}
+
+.gear-cell__hover--up {
+  bottom: 0;
+}
+
+.gear-cell__hover--right {
+  left: calc(100% + var(--ef-space-2));
+}
+
+.gear-cell__hover--left {
+  right: calc(100% + var(--ef-space-2));
+}
+
+.gear-cell__hover--center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.gear-cell__hover--center.gear-cell__hover--up {
+  bottom: calc(100% + var(--ef-space-2));
+}
+
+/* Hover cards need a pointer that can hover; on touch the selected slot's panel below is the card. */
+@media (hover: hover) {
+  .gear-cell:not([data-dismissed]):hover .gear-cell__hover,
+  .gear-cell:not([data-dismissed]):focus-within .gear-cell__hover {
+    display: block;
+  }
+}
+
+.section-comments {
+  display: grid;
+  gap: var(--ef-space-3);
+  margin-top: var(--ef-space-3);
+}
+
+.section-comments__list {
+  display: grid;
+  gap: var(--ef-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ef-color-text-muted);
+}
+
+.section-comments__form {
+  display: grid;
+  gap: var(--ef-space-3);
+}
+
+.section-comments__form label {
+  display: grid;
+  gap: var(--ef-space-2);
+  color: var(--ef-color-text);
+}
+
+.section-comments__form textarea {
+  padding: var(--ef-space-3);
+  font: inherit;
+  color: var(--ef-color-text-strong);
+  background: var(--ef-color-surface-2);
+  border: var(--ef-hairline) solid var(--ef-color-line);
+  border-radius: 0;
+  resize: vertical;
+}
+
+.section-comments__actions {
+  display: flex;
+  gap: var(--ef-space-3);
+}
+
+/* Guide prose rhythm: headings get room (only in the reading sections: tree, gear and stages bring their own spacing) before and after, paragraphs and lists breathe. */
+.guide-prose h3 {
+  margin: var(--ef-space-6) 0 var(--ef-space-2);
+  line-height: var(--ef-leading-heading);
+}
+
+.guide-prose h4 {
+  margin: var(--ef-space-5) 0 var(--ef-space-2);
+  line-height: var(--ef-leading-heading);
+}
+
+.guide-prose :is(h3, h4):first-child {
+  margin-top: 0;
+}
+
+.guide-prose p {
+  margin: 0 0 var(--ef-space-3);
+  line-height: var(--ef-leading-prose);
+}
+
+.guide-prose :is(ul, ol) {
+  margin: 0 0 var(--ef-space-4);
+  padding-left: var(--ef-space-5);
+  line-height: var(--ef-leading-prose);
+}
+
+.guide-prose li + li {
+  margin-top: var(--ef-space-2);
+}
+
+.guide-prose p:last-child,
+.guide-prose :is(ul, ol):last-child {
+  margin-bottom: 0;
+}
+
+/* Source line under the passive tree (the node icons are Grinding Gear Games' artwork). */
+.tree-credit {
+  margin: var(--ef-space-2) 0 0;
+  color: var(--ef-color-text-faint);
+  font-size: var(--ef-text-xs);
 }

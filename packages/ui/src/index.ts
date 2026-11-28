@@ -39,6 +39,7 @@ export type {
 
 export { PassiveTree } from "./tree/PassiveTree";
 export type { PassiveTreeProps } from "./tree/PassiveTree";
+export type { TreeIconSheet } from "./tree/renderer";
 export { buildTreeView, arcBetween } from "./tree/tree-model";
 export type {
   PassiveTreeView,

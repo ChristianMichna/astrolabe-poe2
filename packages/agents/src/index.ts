@@ -52,3 +52,7 @@ export {
   S6_PLAN_KEY,
   S6_STAGES_KEY,
 } from "./stages/s6-progression.js";
+export { GuideSpec, itemsFor, specRubricGaps, withGuideSpec } from "./guide-spec.js";
+export { QualityRubric } from "./quality/rubric.js";
+export { rubricFindings } from "./stages/s10-quality.js";
+export type { GuideDraft } from "./stages/s10-validate.js";

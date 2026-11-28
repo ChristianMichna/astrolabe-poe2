@@ -78,7 +78,18 @@ export class RunStore {
     const row = rows[0];
     if (row === undefined) return this.findImportedGuide(guideId);
     const record = parseRow(RunRecord, row["record"], `guide ${guideId}`);
-    return record.results["S11.guide"]?.value;
+    // While a section comment is worked off, the guide stays readable as its last revision.
+    return record.results["S11.guide"]?.value ?? record.revisions.at(-1);
+  }
+
+  /** The run that made the guide with this id (the most recently saved one); undefined for imported guides. */
+  findRunByGuideId(guideId: string): RunRecord | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT record FROM runs WHERE json_extract(record, '$.guideId') = ? ORDER BY updated_at DESC, rowid DESC LIMIT 1",
+      )
+      .get(guideId);
+    return row === undefined ? undefined : parseRow(RunRecord, row["record"], `guide ${guideId}`);
   }
 
   private findImportedGuide(guideId: string): unknown {

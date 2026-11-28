@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import type { TreeCamera, TreeHighlight, TreeRenderer } from "./renderer";
+import type { TreeCamera, TreeHighlight, TreeIconSheet, TreeRenderer } from "./renderer";
 import type { PassiveTreeView } from "./tree-model";
 
 export interface TreeCanvasHandle {
@@ -18,6 +18,8 @@ export interface TreeCanvasProps {
   /** Nodes to frame on start (with generous context); the whole tree when absent. */
   readonly initialFit?: readonly string[];
   readonly bezel?: boolean;
+  /** Pictures for the larger nodes; the plain shapes show without it. */
+  readonly iconSheet?: TreeIconSheet | undefined;
   readonly label: string;
   readonly onHover?: (hit: { id: string; x: number; y: number } | null) => void;
   readonly onSelect?: (id: string | null) => void;
@@ -47,6 +49,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     focus,
     initialFit,
     bezel,
+    iconSheet,
     label,
     onHover,
     onSelect,
@@ -79,6 +82,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         TreeRenderer.create(host, {
           view,
           ...(bezel !== undefined ? { bezel } : {}),
+          ...(iconSheet !== undefined ? { iconSheet } : {}),
           onHover: (hit) => callbacks.current.onHover?.(hit),
           onSelect: (id) => callbacks.current.onSelect?.(id),
           onCamera: (camera) => callbacks.current.onCamera?.(camera),
@@ -113,7 +117,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       rendererRef.current = null;
       renderer?.destroy();
     };
-  }, [view, bezel]);
+  }, [view, bezel, iconSheet]);
 
   useEffect(() => {
     rendererRef.current?.setHighlight(highlight);

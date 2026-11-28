@@ -112,8 +112,8 @@ test("a saved guide opens in the window with its stages and numbers", async ({ p
   await page.goto(`/#/guide/${guideId}`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Fixture Ascendancy");
-  await expect(page.getByText("1,234.5").first()).toBeVisible();
-  await expect(page.getByText("Fixture Unique Name")).toBeVisible();
+  await expect(page.getByText("1,235").first()).toBeVisible();
+  await expect(page.getByText("Fixture Unique Name").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Save as .build file" })).toBeVisible();
   await expect(page.getByText("Fixture Notable").first()).toBeVisible();
   const shot = process.env["GUIDE_SHOT"];

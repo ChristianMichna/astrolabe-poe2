@@ -311,6 +311,14 @@ automatisch nach einem Patch.
 - `GET /api/tree` liefert `PassiveTreeData`: alle Passive-Knoten und -Gruppen des geladenen
   Releases mit Geometrie für die Baumansicht im Fenster; Einträge, die ihr Schema verletzen,
   stehen in `skipped`.
+- `GET /api/tree/icons.json` (`TreeIconAtlas`) und `GET /api/tree/icons.png`: die Original-Symbole der
+  Notables, Keystones, Ascendancy-Knoten und Klassenstarts. Der Server baut den Atlas beim ersten
+  Aufruf aus den Baumdaten von Path of Building (`TreeData/<neueste Version>/tree.json` und die
+  Sheets `skills_*_BC1.dds.zst`; BC1-Dekodierung, runde Maske, ein PNG) und hält ihn im Speicher.
+  Im Repository liegen keine Grafiken; der Installer liefert nur diese Sheets (ca. 4 MB) mit.
+  Grafiken © Grinding Gear Games. Ohne PoB-Ordner 404 (`no_icons`), bei einem Fehler beim Bauen
+  503 (`icons_unavailable`) mit Eintrag im Log; das Fenster zeigt dann einen Hinweis und den Baum
+  mit einfachen Formen. Knoten ohne Symbol im Sheet (z. B. Meisterschaften) stehen in `missing`.
 - `GET /api/guides/:guideId/build-file` liefert den Guide als `.build`-Datei des Build Planners
   (F-12): `{ file, omitted }`. Die Spiel-IDs und Namen kommen aus dem geladenen Release
   (`src/export/build-file-resolvers.ts`: Knoten-`gameId`, Slot-`gameId`, Unique-, Ascendancy-
@@ -324,3 +332,16 @@ automatisch nach einem Patch.
   geprüft, Guides mit einem Fehler schon. Beim Beenden stoppt der Server die Prüfung
   nach dem laufenden Guide, bevor er die Datenbank schließt.
 - Die Antwortform ist `GuidePatchStatusView` aus `@astrolabe/contracts` (0.16.0). Eine gespeicherte Zeile, die nicht zum Vertrag passt, erscheint als `internal`-Fehler dieses Guides.
+
+## Abschnitts-Kommentare (F-07)
+
+`GET/POST /api/guides/:guideId/comments` (`GuideCommentsView`, `GuideCommentRequest`). Ein Kommentar
+ist die `UserIntervention` `comment` auf einen S9-Abschnitt (`S9.summary`, `S9.stage-…` usw.):
+Die Engine öffnet den fertigen Lauf wieder, legt den Guide als frühere Revision ab
+(`RunRecord.revisions`), verwirft nur das Ergebnis des Abschnitts samt S10/S11 und gibt den
+Kommentar samt altem Text (`previous`) nur der Aufgabe dieses Abschnitts. Claude schreibt ihn neu,
+Schema, Katalog-IDs, Zahlenlinter und Rubrik prüfen wie beim ersten Mal; nach S10/S11 ist der Guide
+`metadata.revision + 1` unter derselben Guide-ID. Bis dahin liefert `findGuide` die letzte
+Revision. Der Status je Kommentar (`queued`/`working`/`applied`/`failed`) wird aus dem Lauf
+abgeleitet. Importierte Guides haben keinen Lauf und sind nicht kommentierbar. Nicht enthalten:
+Kommentare auf Gear, Tree und Crafting-Pläne (S5 bis S8); die brauchen eigene Neuberechnung.

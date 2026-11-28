@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { GuideListView, GuideView, PassiveTreeData } from "@astrolabe/contracts/guide";
+import {
+  GuideListView,
+  GuideView,
+  PassiveTreeData,
+  TreeIconAtlas,
+} from "@astrolabe/contracts/guide";
+import type { TreeIconSheet } from "@astrolabe/ui";
 import { ApiError } from "./client";
 
 /*
@@ -41,3 +47,35 @@ export const loadGuideView = (guideId: string, signal?: AbortSignal): Promise<Gu
 
 export const loadPassiveTree = (signal?: AbortSignal): Promise<PassiveTreeData> =>
   get("/api/tree", PassiveTreeData, signal);
+
+/**
+ * The node pictures of the passive tree: the atlas index and its image, joined for the renderer.
+ * The image goes through `fetch` like every other call, so the app protocol adds the access token.
+ */
+export async function loadTreeIconSheet(signal?: AbortSignal): Promise<TreeIconSheet> {
+  const init = signal ? { signal } : {};
+  const [atlas, response] = await Promise.all([
+    get("/api/tree/icons.json", TreeIconAtlas, signal),
+    fetch("/api/tree/icons.png", init),
+  ]);
+  if (!response.ok) {
+    throw new ApiError(
+      `The server answered HTTP ${response.status} for the icon image.`,
+      response.status,
+    );
+  }
+  const image = await createImageBitmap(await response.blob());
+  // The caller owns the bitmap; one that is not handed over is closed here.
+  if (signal?.aborted) {
+    image.close();
+    throw new DOMException("Aborted", "AbortError");
+  }
+  if (image.width !== atlas.width || image.height !== atlas.height) {
+    image.close();
+    throw new ApiError(
+      `The icon image is ${image.width}x${image.height} but its index says ${atlas.width}x${atlas.height}.`,
+      502,
+    );
+  }
+  return { image, cell: atlas.cell, columns: atlas.columns, icons: atlas.icons };
+}

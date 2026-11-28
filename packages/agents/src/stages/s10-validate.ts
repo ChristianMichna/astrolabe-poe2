@@ -13,19 +13,28 @@ import {
 } from "@astrolabe/contracts/build";
 import { Ascendancy, CharacterClass, Gem, PassiveNode } from "@astrolabe/contracts/catalog";
 import type { StatMap } from "@astrolabe/contracts/calc";
-import { GuideDocument } from "@astrolabe/contracts/guide";
+import { GuideDocument, ResearchSection } from "@astrolabe/contracts/guide";
 import type { CalcId, EntityRef, JsonValue } from "@astrolabe/contracts/common";
 import type { StageConfig } from "../config.js";
 import { type AnyTaskSpec, defineTask, type PipelineContext, type PlanStep } from "../pipeline.js";
 import { S10_CRITIC } from "../prompts.js";
 import { requestContext } from "./context.js";
+import { type QualityRubric, RUBRIC_SECTIONS } from "../quality/rubric.js";
+import { judgedFindings, QualityVerdict, qualityKey, rubricFindings } from "./s10-quality.js";
 import { craftKey, S8_PLAN_KEY } from "./s8-craft.js";
 import { S6_PLAN_KEY } from "./s6-progression.js";
 import { type S6Row, stageTableOf } from "./s6-table.js";
 import { S7_PLAN_KEY } from "./s7-plan.js";
 import { itemEntities } from "./s7-gear.js";
-import { withDetails } from "./s9-detail.js";
+import {
+  craftDetailKey,
+  slotDetailKey,
+  stageDetailKey,
+  tierDetailKey,
+  withDetails,
+} from "./s9-detail.js";
 import { type S9Section, sectionKey, sectionSchemas, walkSection } from "./s9-guide.js";
+import { allFindings, researchAnswer } from "./s9-research.js";
 
 export const S10_REPORT_KEY = "S10.report";
 export const S10_CRITIC_KEY = "S10.critic";
@@ -56,6 +65,12 @@ export const CriticVerdict = z.object({
     .array(
       z.object({
         section: z.enum(CRITIC_SECTIONS),
+        /**
+         * Where in the section the problem is, when the context names it: a progression stage key,
+         * "<tier>/<slot>" or a tier id of the gear plan, or a crafting plan key. It lets a prose
+         * problem go back to the one detail task that wrote the text.
+         */
+        part: z.string().min(1).max(200).optional(),
         message: z
           .string()
           .min(1)
@@ -93,6 +108,54 @@ export function criticTask(
   });
 }
 
+/**
+ * The S9 detail task that wrote the text an issue is about, when the issue names its part and that
+ * task has a stored result (so the detail pass ran); otherwise the issue goes to the plan's stage.
+ */
+function detailCause(
+  ctx: PipelineContext,
+  issue: { section: CriticSection; part?: string | undefined },
+): string | undefined {
+  const { part } = issue;
+  if (part === undefined) return undefined;
+  const candidates =
+    issue.section === "progression"
+      ? [stageDetailKey(part)]
+      : issue.section === "crafting"
+        ? [craftDetailKey(part)]
+        : issue.section === "gear"
+          ? [
+              ...(part.includes("/")
+                ? [slotDetailKey(part.split("/")[0] ?? "", part.split("/").slice(1).join("/"))]
+                : []),
+              tierDetailKey(part),
+            ]
+          : [];
+  return candidates.find((key) => ctx.result(key) !== undefined);
+}
+
+/** G7 quality: the rubric's measured rules and the judge's verdicts (none without a rubric). */
+function qualityFindings(
+  ctx: PipelineContext,
+  draft: GuideDraft,
+  rubric: QualityRubric | undefined,
+): Finding[] {
+  if (rubric === undefined) return [];
+  const verdictOf = (section: (typeof RUBRIC_SECTIONS)[number]): QualityVerdict | undefined => {
+    const v = ctx.result(qualityKey(section));
+    return v === undefined ? undefined : stored(QualityVerdict, v, `quality verdict (${section})`);
+  };
+  return [
+    ...rubricFindings(draft, rubric),
+    ...judgedFindings(
+      rubric,
+      verdictOf,
+      (section, part) => detailCause(ctx, { section, part }),
+      causeOf,
+    ),
+  ].map((f) => Finding.parse(f));
+}
+
 /** The stage that wrote a section of the guide, for returning findings to it. */
 function causeOf(section: CriticSection): string {
   switch (section) {
@@ -112,17 +175,31 @@ function readCritic(value: unknown): CriticVerdict {
   return stored(CriticVerdict, value, "critic verdict (S10.critic)");
 }
 
-/** Whether the stored report was made with the critic verdict that is stored now. */
+/** The stored quality verdicts, by section, as the report keeps them. */
+function qualitiesOf(ctx: Pick<PipelineContext, "result">): Record<string, JsonValue> {
+  return Object.fromEntries(
+    RUBRIC_SECTIONS.flatMap((s) => {
+      const v = ctx.result(qualityKey(s));
+      return v === undefined ? [] : [[s, v] as const];
+    }),
+  );
+}
+
+/** Whether the stored report was made with the critic verdict and quality verdicts stored now. */
 export function reportIsCurrent(ctx: PipelineContext): boolean {
   const report = ctx.result(S10_REPORT_KEY);
   if (report === undefined) return false;
-  const used = (report as { critic?: unknown } | null)?.critic ?? null;
-  const now = ctx.result(S10_CRITIC_KEY) ?? null;
-  return JSON.stringify(used) === JSON.stringify(now);
+  const stored = report as { critic?: unknown; quality?: unknown } | null;
+  const usedCritic = stored?.critic ?? null;
+  const nowCritic = ctx.result(S10_CRITIC_KEY) ?? null;
+  return (
+    JSON.stringify(usedCritic) === JSON.stringify(nowCritic) &&
+    JSON.stringify(stored?.quality ?? {}) === JSON.stringify(qualitiesOf(ctx))
+  );
 }
 
 /** G8 from the critic's verdict: passes only if every part was read and nothing was found. */
-function criticGate(verdict: CriticVerdict | undefined): Finding[] {
+function criticGate(verdict: CriticVerdict | undefined, ctx: PipelineContext): Finding[] {
   if (verdict === undefined) {
     return [finding("G8", "check_not_built", "The critic has not reviewed the guide.")];
   }
@@ -130,7 +207,13 @@ function criticGate(verdict: CriticVerdict | undefined): Finding[] {
   return [
     ...missed.map((s) => finding("G8", "section_not_reviewed", `The critic did not read ${s}.`)),
     ...verdict.issues.map((i) =>
-      finding("G8", "inconsistency", `${i.section}: ${i.message}`, undefined, causeOf(i.section)),
+      finding(
+        "G8",
+        "inconsistency",
+        `${i.section}: ${i.message}`,
+        undefined,
+        detailCause(ctx, i) ?? causeOf(i.section),
+      ),
     ),
   ];
 }
@@ -148,6 +231,8 @@ export interface S10Inputs {
   mainSkillId: string;
   /** Whether S9 ran its detail pass; its results are merged into the plans. */
   detailPass?: boolean;
+  /** The quality rubric (measured rules and judged questions); absent means no quality gate. */
+  rubric?: QualityRubric;
 }
 
 /** Parses a stored result; the error names the part and keeps the schema error as cause. */
@@ -209,6 +294,7 @@ export function assembleDraft(ctx: PipelineContext, inputs: S10Inputs): GuideDra
       atlas: part("atlas", sectionSchemas.atlas),
       variants: part("variants", sectionSchemas.variants).variants,
       faq: part("faq", sectionSchemas.faq).faq,
+      research: allFindings(ctx),
     },
     "guide draft",
   );
@@ -353,6 +439,25 @@ const finding = (
     ...(returnTo === undefined ? {} : { returnTo }),
   });
 
+/** A section written without research is shown as such, never as one where nothing was found. */
+function researchFindings(ctx: PipelineContext): Finding[] {
+  return ResearchSection.options.flatMap((section) => {
+    const answer = researchAnswer(ctx, section);
+    return answer !== undefined && !answer.webAccess
+      ? [
+          finding(
+            "G7",
+            "research_unavailable",
+            `The ${section} section was written without research: the client had no web access.`,
+            `/research`,
+            undefined,
+            "warning",
+          ),
+        ]
+      : [];
+  });
+}
+
 type S10Config = NonNullable<StageConfig["s10"]>;
 
 /** One thing the gates measure: a progression stage, or for the endgame stage the geared build. */
@@ -365,7 +470,7 @@ interface Subject {
   stats?: StatMap;
   /**
    * Campaign stages only: the stage measured wearing the first gear tier. Attribute requirements
-   * are checked against it, because the stage itself carries no gear (the gear of the early
+   * are checked against it, because the stage wears at most the placeholder weapon (the gear of the early
    * tiers may grant the attributes the passive tree does not).
    */
   gearedStats?: StatMap;
@@ -810,7 +915,7 @@ async function measuredGates(
       ["G5", g5, cfg.stats.dps, "minDps", "dps_below_minimum"],
     ] as const) {
       if (field === "minEhp" ? !ehpSet : !dpsSet) continue;
-      // A campaign stage carries no gear: its EHP and damage count with the first gear tier worn
+      // A campaign stage carries at most the placeholder weapon: its EHP and damage count with the first gear tier worn
       // (an attack needs its weapon to deal damage at all), and that tier's part fixes a gap.
       // A failed measurement with gear is reported (G3 calc_failed); the ungeared numbers do not stand in.
       if (gearedFailed === true) continue;
@@ -822,21 +927,31 @@ async function measuredGates(
           list.push(missing(gate, statName));
           continue;
         }
+        // EHP is compared on the stage's own tree: the first gear tier is the same item set in every campaign
+        // stage while the enemies of a stage scale with its level, so a geared EHP can fall from stage to stage
+        // however the tree grows (measured in a run: enemy damage and the evade chance of the same gear both differ by stage). The geared value only has to be above zero.
+        const compared = field === "minEhp" ? stats[statName] : value;
+        if (compared === undefined) {
+          list.push(missing(gate, statName));
+          continue;
+        }
         const best = peak[field];
-        if (value <= 0 || (best !== undefined && value < best * derived.minRatioToBest)) {
+        const noValue = value <= 0;
+        if (noValue || (best !== undefined && compared < best * derived.minRatioToBest)) {
           list.push(
             finding(
               gate,
               code,
-              value <= 0
+              noValue
                 ? `Stage ${stage.key} has none of the measured ${statName}.`
-                : `Stage ${stage.key} falls below the allowed share of the best ${statName} of the stages before it.`,
+                : `Stage ${stage.key} falls below the allowed share of the best ${statName} of the stages before it${field === "minEhp" ? ", measured on the stage's own tree" : ""}.`,
               path,
-              fixedBy,
+              // a tree that falls behind is the tree's gap, the gear only answers for a missing value
+              field === "minEhp" && !noValue ? returnTo : fixedBy,
             ),
           );
         }
-        peak[field] = Math.max(best ?? value, value);
+        peak[field] = Math.max(best ?? compared, compared);
         continue;
       }
       const min = limit(stage.state.level, field);
@@ -952,6 +1067,7 @@ export async function runGates(
   critic?: CriticVerdict,
   stageTable?: readonly S6Row[],
   targetBuild?: TargetBuild,
+  rubric?: QualityRubric,
 ): Promise<GateResult[]> {
   const measured =
     cfg === undefined ? undefined : await measuredGates(ctx, draft, cfg, stageTable, targetBuild);
@@ -1074,11 +1190,11 @@ export async function runGates(
     G3: measured?.g3 ?? [],
     G4: measured?.g4 ?? [],
     G5: measured?.g5 ?? [],
-    G8: criticGate(critic),
+    G8: criticGate(critic, ctx),
     G1: g1,
     G2: [...g2, ...(measured?.g2 ?? [])],
     G6: g6,
-    G7: [...g7Counts, ...g7],
+    G7: [...g7Counts, ...g7, ...researchFindings(ctx), ...qualityFindings(ctx, draft, rubric)],
   };
   return (["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"] as const).map((gate) => {
     const findings = [...(found[gate] ?? [])];
@@ -1110,13 +1226,22 @@ export function validateStep(inputs: S10Inputs, cfg?: S10Config): PlanStep {
       const draft = assembleDraft(runCtx, inputs);
       const stored = runCtx.result(S10_CRITIC_KEY);
       const critic = stored === undefined ? undefined : readCritic(stored);
-      const gates = await runGates(runCtx, draft, cfg, critic, inputs.stageTable, inputs.target);
+      const gates = await runGates(
+        runCtx,
+        draft,
+        cfg,
+        critic,
+        inputs.stageTable,
+        inputs.target,
+        inputs.rubric,
+      );
       return JSON.parse(
         JSON.stringify({
           passed: gates.every((g) => g.passed),
           gates,
           draft,
           critic: critic ?? null,
+          quality: qualitiesOf(runCtx),
         }),
       ) as JsonValue;
     },

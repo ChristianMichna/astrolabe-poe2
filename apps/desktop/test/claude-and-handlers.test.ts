@@ -18,6 +18,7 @@ const config: DesktopConfig = {
     startSentence: "Start session {code} now.",
   },
   economy: { enabled: true },
+  citations: { allowedHosts: ["example.test"] },
   update: { enabled: true, firstCheckDelaySeconds: 1, checkIntervalHours: 1 },
   dataSync: {
     enabled: true,

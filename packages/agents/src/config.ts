@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { GuideSpec, specRubricGaps } from "./guide-spec.js";
+import { ResearchConfig } from "./research-config.js";
+import { QualityRubric } from "./quality/rubric.js";
 import { BudgetTierId } from "@astrolabe/contracts/build";
 import { CalcProfileId } from "@astrolabe/contracts/common";
 
@@ -46,6 +49,19 @@ export const StageConfig = z
         weights: z.record(z.string().min(1), z.number()),
         floors: z.record(z.string().min(1), z.number()).default({}),
       }),
+      /**
+       * Attack skills deal no damage without a weapon, so the tree searches would be blind for
+       * damage. When set, the skeleton wears the weapon (of a class the slot accepts, the lowest
+       * requirement) that PoB measures best for the main skill; the gear stages replace it.
+       */
+      placeholderWeapon: z
+        .object({
+          /** Slot id of the release (`DataRelease.itemSlots`) that takes the weapon. */
+          slot: z.string().min(1),
+          /** Rarity id of the release the placeholder has (no modifiers). */
+          rarity: z.string().min(1),
+        })
+        .optional(),
     }),
     /**
      * S5 target build. Optional on purpose: calc profiles and the tree objective
@@ -275,6 +291,15 @@ export const StageConfig = z
      */
     s9: z
       .object({
+        /** File with the quality rubric, next to this config; the loader reads it into `rubric`. */
+        rubricFile: z.string().min(1).optional(),
+        rubric: QualityRubric.optional(),
+        /** File with the guide specification, next to this config; the loader reads it into `guideSpec`. */
+        guideSpecFile: z.string().min(1).optional(),
+        guideSpec: GuideSpec.optional(),
+        /** File with the research settings, next to this config; the loader reads it into `research`. */
+        researchFile: z.string().min(1).optional(),
+        research: ResearchConfig.optional(),
         depth: z.object({
           introductionParagraphs: z.int().nonnegative(),
           interactions: z.int().nonnegative(),
@@ -290,6 +315,22 @@ export const StageConfig = z
           minTreeNotesPerStage: z.int().nonnegative(),
           minStatPrioritiesPerSlot: z.int().nonnegative(),
         }),
+      })
+      .refine(
+        (s9) => {
+          if (s9.rubric === undefined || s9.guideSpec === undefined) return true;
+          const gaps = specRubricGaps(s9.guideSpec, s9.rubric);
+          return gaps.unknown.length === 0 && gaps.unreferenced.length === 0;
+        },
+        {
+          message:
+            "the guide specification and the quality rubric disagree: every rubric rule must be explained by a spec item and every spec item may name only existing rules",
+          path: ["guideSpec"],
+        },
+      )
+      .refine((s9) => s9.rubric !== undefined || s9.rubricFile !== undefined, {
+        message: "s9 needs the quality rubric (rubricFile): the quality gate must not be off",
+        path: ["rubricFile"],
       })
       .optional(),
     s2: z.object({

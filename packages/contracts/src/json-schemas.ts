@@ -6,7 +6,8 @@ import { BuildRequest } from "./build/request.js";
 import { CandidateComparisonView } from "./build/candidate-view.js";
 import { GuideDocument } from "./guide/document.js";
 import { GuideView } from "./guide/view.js";
-import { PassiveTreeData } from "./guide/tree.js";
+import { PassiveTreeData, TreeIconAtlas } from "./guide/tree.js";
+import { GuideCommentRequest, GuideCommentsView } from "./guide/comments.js";
 import { GuideFile } from "./guide/file.js";
 import { GuideListView } from "./guide/list.js";
 import { GuidePatchStatusView, GuideTools, PatchStatus } from "./guide/patch-status.js";
@@ -37,8 +38,11 @@ export const jsonSchemas: Readonly<Record<string, z.ZodType>> = {
   "guide/patch-status": PatchStatus,
   "guide/patch-status-view": GuidePatchStatusView,
   "guide/list": GuideListView,
+  "guide/comment-request": GuideCommentRequest,
+  "guide/comments-view": GuideCommentsView,
   "guide/view": GuideView,
   "guide/tree": PassiveTreeData,
+  "guide/tree-icons": TreeIconAtlas,
   "guide/file": GuideFile,
   "events/run-event": RunEvent,
   "economy/price-book": PriceBook,

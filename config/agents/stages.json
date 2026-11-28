@@ -1,7 +1,7 @@
 {
   "$comment": "Settings of the planning stages (packages/agents). Versioned config, no constants in code. Gem kinds are ids from the data release.",
   "version": "stages-1",
-  "promptVersion": "forge-prompts-2",
+  "promptVersion": "forge-prompts-3",
   "supportGemKinds": ["Support"],
   "minion": {
     "$comment": "Builds whose main skill is a gem of one of these kinds (gem kind of the data release) measure their damage with PoB's minion outputs (the player's own DPS is 0 for them). The names on the left are the stats named in the objectives and in s10.stats.dps; each is replaced by the one on the right. Replaced for the tree searches (S3, S5, S6), the gear objective (S7) and the damage gate (G5).",
@@ -25,11 +25,12 @@
     "calcProfiles": ["mapping", "pinnacle"],
     "objective": {
       "weights": {
-        "FullDPS": 1,
+        "CombinedDPS": 1,
         "TotalEHP": 0.4
       },
       "floors": {}
     },
+    "placeholderWeapon": { "slot": "Weapon 1", "rarity": "normal" },
     "gemLevel": 1
   },
   "s5": {
@@ -37,7 +38,7 @@
     "calcProfiles": ["mapping", "pinnacle"],
     "objective": {
       "weights": {
-        "FullDPS": 1,
+        "CombinedDPS": 1,
         "TotalEHP": 0.4
       },
       "floors": {},
@@ -51,7 +52,7 @@
     "calcProfiles": ["mapping", "pinnacle"],
     "objective": {
       "weights": {
-        "FullDPS": 1,
+        "CombinedDPS": 1,
         "TotalEHP": 0.4
       },
       "floors": {},
@@ -93,14 +94,14 @@
     "calcProfiles": ["mapping", "pinnacle"],
     "objective": {
       "weights": {
-        "FullDPS": 1,
+        "CombinedDPS": 1,
         "TotalEHP": 0.4
       },
       "calcProfile": "mapping"
     }
   },
   "s10": {
-    "$comment": "Gate inputs of S10. Stat names are PoB output names (pob_bridge/lua/runner.lua; MissingXResist is PoB's resistance still missing to the cap; chaos is not listed because a build reaching its cap through gear alone is not a requirement the product owner has set). CombinedDPS is used because FullDPS is 0 for builds without full-DPS groups. G4/G5 minimums are derived from the guide's own measurements (product owner decision 26.11.2026: automatic, not fixed numbers): `derived.minRatioToBest` is the share of the best earlier stage's TotalEHP and CombinedDPS a stage must keep, every stage must have some, and stages must ascend in level; nothing depends on the game version. The ratio is a tolerance chosen by the developers, not a game fact; the product owner can change it. `thresholds` stays empty while `derived` is set; fixed per-level minimums (with thresholdsCalibrated) remain possible without `derived`.",
+    "$comment": "Gate inputs of S10. Stat names are PoB output names (pob_bridge/lua/runner.lua; MissingXResist is PoB's resistance still missing to the cap; chaos is not listed because a build reaching its cap through gear alone is not a requirement the product owner has set). CombinedDPS is used because FullDPS is 0 for builds without full-DPS groups. G4/G5 minimums are derived from the guide's own measurements (product owner decision 26.11.2026: automatic, not fixed numbers): `derived.minRatioToBest` is the share of the best earlier stage's TotalEHP (measured on the stage's own tree, because the enemies and with them the geared EHP change from stage to stage) and CombinedDPS (with the first gear tier worn) a stage must keep, every stage must have some, and stages must ascend in level; nothing depends on the game version. The ratio is a tolerance chosen by the developers, not a game fact; the product owner can change it. `thresholds` stays empty while `derived` is set; fixed per-level minimums (with thresholdsCalibrated) remain possible without `derived`.",
     "calcProfile": "mapping",
     "stats": {
       "spiritFree": "SpiritUnreserved",
@@ -151,6 +152,9 @@
   },
   "s9": {
     "$comment": "Depth of the guide (product owner, 27.11.2026: at least the detail of Maxroll guides). S9 writes one task per progression stage, gear tier, gear slot and crafting plan on top of the sections; these are the least counts a task's answer must reach before it is accepted. Quality bar of the developers, not game facts.",
+    "rubricFile": "guide-rubric.json",
+    "guideSpecFile": "guide-spec.json",
+    "researchFile": "research.json",
     "depth": {
       "introductionParagraphs": 3,
       "interactions": 3,

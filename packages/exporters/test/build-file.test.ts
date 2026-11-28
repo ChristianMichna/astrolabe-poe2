@@ -126,6 +126,24 @@ describe("guideToBuildFile", () => {
     ]);
   });
 
+  it("leaves out the placeholder weapon of the calculation and says so", () => {
+    const placeholder = {
+      slot: "Weapon 1",
+      item: { kind: "crafted", baseItemId: "Wand", rarity: "normal", mods: [] },
+    };
+    const plain = {
+      ...guide,
+      progression: {
+        stages: [stage("a", 0, [1, 10], [["n1", 0]], [skill("G", [])], [placeholder])],
+      },
+    } as never as PublishedGuide;
+    const out = guideToBuildFile(plain, resolve, "Test build");
+    expect(out.file.inventory_slots).toEqual([]);
+    expect(out.omitted).toEqual([
+      "slot Weapon 1: an item without modifiers is a measuring placeholder, left out of the file",
+    ]);
+  });
+
   it("lists what has no game id instead of guessing", () => {
     expect(omitted).toEqual([
       "passive n9: the release has no game id",

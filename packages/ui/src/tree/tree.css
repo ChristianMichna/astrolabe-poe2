@@ -13,6 +13,18 @@
   align-items: start;
 }
 
+/* Full screen: the tree takes the whole window above the page. */
+.ef-tree--expanded {
+  --ef-tree-height: calc(100vh - 7rem);
+
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: auto;
+  padding: var(--ef-space-4);
+  background: var(--ef-tree-ground);
+}
+
 @media (width < 1180px) {
   .ef-tree {
     grid-template-columns: minmax(0, 1fr);

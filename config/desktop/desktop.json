@@ -13,6 +13,10 @@
     "$comment": "Market prices (poe.ninja) for crafting and start costs. Off = no prices, crafting costs stay uncalibrated. Provider, endpoints and limits are in config/economy.",
     "enabled": true
   },
+  "citations": {
+    "$comment": "Hosts a citation link in a guide may open in the browser (exact host or subdomain). The same list is the research allowlist in config/agents/research.json.",
+    "allowedHosts": ["maxroll.gg", "poe2db.tw", "pathofexile.com"]
+  },
   "update": { "enabled": true, "firstCheckDelaySeconds": 15, "checkIntervalHours": 6 },
   "dataSync": {
     "$comment": "New patches are data releases (F-01): the app looks for them on GitHub Releases, verifies and installs them next to the bundled one. Pre-releases count while 1.0 data is still being proven.",

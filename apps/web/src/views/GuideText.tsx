@@ -249,3 +249,35 @@ export function FaqSection({ view }: { view: GuideView }) {
     </Panel>
   );
 }
+
+/** Host of a source link; undefined when the browser cannot parse it, so one odd link never breaks the page. */
+function hostOfLink(url: string): string | undefined {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The pages the research behind the guide came from; the numbers match the [n] in the text. */
+export function SourcesSection({ view }: { view: GuideView }) {
+  const { research } = view.guide;
+  if (research.length === 0) return null;
+  return (
+    <Panel title="Sources" kicker="Research">
+      <ol className="guide-sources">
+        {research.map((f) => (
+          <li key={f.id} id={`source-${f.id}`}>
+            <a href={f.source.url} target="_blank" rel="noreferrer">
+              {f.source.title}
+            </a>{" "}
+            <span className="guide-source-host">({hostOfLink(f.source.url) ?? f.source.url})</span>
+            <p>
+              <RichTextView text={f.claim} view={view} />
+            </p>
+          </li>
+        ))}
+      </ol>
+    </Panel>
+  );
+}
