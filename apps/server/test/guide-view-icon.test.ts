@@ -51,13 +51,12 @@ describe("item card icon", () => {
 
   it("gives a crafted item the image of its base", () => {
     const card = itemCard(
-      {
+      ItemSpec.parse({
         kind: "crafted",
         baseItemId: "FixBase",
         rarity: "fixture_rarity",
         mods: [],
-        socketables: [],
-      },
+      }),
       catalog,
       new Set(),
     );
