@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Badge, Button, Callout, GuideNotes, Panel, Tabs } from "@astrolabe/ui";
 import type { ProgressionStage } from "@astrolabe/contracts/build";
-import type { GuideListView, GuideView } from "@astrolabe/contracts/guide";
+import { stageSectionKey, type GuideListView, type GuideView } from "@astrolabe/contracts/guide";
 import { CraftingSection } from "./GuideCrafting";
 import { useLoaded } from "../api/use-loaded";
 import { GearSection } from "./GuideGear";
@@ -525,6 +525,7 @@ function StageView({
           </ul>
         </Panel>
       ) : null}
+      <SectionComments sectionKey={stageSectionKey(stage.key)} label={stage.label} />
     </div>
   );
 }

@@ -192,9 +192,12 @@ export function CommentsBanner() {
 export function SectionComments({
   sectionKey,
   label,
+  hint,
 }: {
   sectionKey: GuideSectionKey;
   label: string;
+  /** Shown above the form: what the comment sets off beyond rewriting text. */
+  hint?: string;
 }) {
   const api = useContext(CommentsContext);
   const [editing, setEditing] = useState(false);
@@ -203,7 +206,8 @@ export function SectionComments({
   const [failure, setFailure] = useState<string | undefined>(undefined);
   if (api === undefined || api.state.status !== "ready") return null;
   const { view } = api.state;
-  if (!view.sections.some((s) => s.key === sectionKey)) return null;
+  const info = view.sections.find((s) => s.key === sectionKey);
+  if (info === undefined) return null;
   const mine = view.comments.filter((c) => c.section === sectionKey);
   const submit = (): void => {
     setBusy(true);
@@ -239,6 +243,7 @@ export function SectionComments({
             if (text.trim() !== "") submit();
           }}
         >
+          {info.recalculates && hint !== undefined ? <p>{hint}</p> : null}
           <label>
             What should change in “{label}”?
             <textarea

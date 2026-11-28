@@ -343,5 +343,8 @@ Kommentar samt altem Text (`previous`) nur der Aufgabe dieses Abschnitts. Claude
 Schema, Katalog-IDs, Zahlenlinter und Rubrik prüfen wie beim ersten Mal; nach S10/S11 ist der Guide
 `metadata.revision + 1` unter derselben Guide-ID. Bis dahin liefert `findGuide` die letzte
 Revision. Der Status je Kommentar (`queued`/`working`/`applied`/`failed`) wird aus dem Lauf
-abgeleitet. Importierte Guides haben keinen Lauf und sind nicht kommentierbar. Nicht enthalten:
-Kommentare auf Gear, Tree und Crafting-Pläne (S5 bis S8); die brauchen eigene Neuberechnung.
+abgeleitet. Importierte Guides haben keinen Lauf und sind nicht kommentierbar. Auch die
+Crafting-Strategie (`S8.craft-<Stufe>-<Slot>`) ist kommentierbar: Die Engine verwirft sie samt
+`S8.plan` (Simulator und Preise rechnen neu) und dem Plan-Text `S9.craft-…` (`commentDependents` in
+`packages/agents`); `GuideSectionInfo.recalculates` sagt es der App. Nicht enthalten: Kommentare auf
+Gear-Wahl, Tree und Gems (S5 bis S7), weil deren Neuberechnung alles danach verwirft.
