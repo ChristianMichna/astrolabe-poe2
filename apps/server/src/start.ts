@@ -1,3 +1,4 @@
+import { treeIconSource } from "./tree-icons/source.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -60,6 +61,8 @@ export interface StartOptions {
   economy?: EconomySettings;
   /** Directory with unpacked data releases (one folder per release id); enables guide_revalidate. */
   releasesDir?: string;
+  /** The PathOfBuilding-PoE2 folder (holds `src/`); its passive tree sheets give the node icons (`/api/tree/icons.*`). */
+  pobRoot?: string;
   /** Folder of guide files (`GuideFile`) imported on start when the store lacks them (example guides). */
   exampleGuidesDir?: string;
   allowedOrigins: readonly string[];
@@ -252,6 +255,7 @@ async function startServerOwningPool(
     ...(economy === undefined ? {} : { economy: economy.price }),
     ...(guideRevalidate === undefined ? {} : { guideRevalidate }),
     ...(sweeper === undefined ? {} : { guideSweep: sweeper }),
+    ...(options.pobRoot === undefined ? {} : { treeIcons: treeIconSource(options.pobRoot) }),
     findGuide: (id) => store.findGuide(id),
     findRunByGuide: (id) => store.findRunByGuideId(id),
     listGuideIds: () => store.listGuideIds(),

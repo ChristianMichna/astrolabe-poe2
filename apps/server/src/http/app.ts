@@ -22,6 +22,8 @@ import { guideToBuildFile } from "@astrolabe/exporters";
 import { buildCommentsView } from "../guides/comments.js";
 import type { RunRecord } from "../engine/run-record.js";
 import { buildGuideView } from "../guides/guide-view.js";
+import type { BuiltIconAtlas } from "../tree-icons/atlas.js";
+import type { TreeIconSource } from "../tree-icons/source.js";
 import { buildPassiveTreeData } from "../guides/tree-data.js";
 import { buildFileResolvers } from "../export/build-file-resolvers.js";
 import type { GuideSweeper } from "../tools/guide-sweep.js";
@@ -62,6 +64,8 @@ export interface AppOptions extends ForgeMcpDeps {
   catalogOnlyReason?: string;
   /** Automatic revalidation of stored guides (F-19); absent without a releases directory. */
   guideSweep?: GuideSweeper;
+  /** Node icons for the passive tree (`/api/tree/icons.json` and `.png`); absent = the routes answer 404. */
+  treeIcons?: TreeIconSource;
   /** The stored guide with this id (see `RunStore.findGuide`), unvalidated; enables the guide and `.build` routes. */
   findGuide?: (guideId: string) => unknown;
   /** The run that made a guide (see `RunStore.findRunByGuideId`); enables the comment routes. */
@@ -242,6 +246,38 @@ export function createApp(options: AppOptions): FastifyInstance {
     treeData ??= PassiveTreeData.parse(buildPassiveTreeData(options.catalog));
     return treeData;
   });
+
+  // The icons are an extra: when they cannot be built the window keeps drawing the tree without
+  // them, so this says why (and logs the cause) instead of failing as an internal error.
+  const withIconAtlas = async (
+    reply: FastifyReply,
+    send: (atlas: BuiltIconAtlas) => unknown,
+  ): Promise<unknown> => {
+    if (options.treeIcons === undefined) {
+      return reply.code(404).send({
+        error: {
+          code: "no_icons",
+          message: "This server has no Path of Building folder for node icons.",
+        },
+      });
+    }
+    try {
+      return send(await options.treeIcons());
+    } catch (error) {
+      logger.error("tree icons failed", { error });
+      return reply.code(503).send({
+        error: { code: "icons_unavailable", message: "The passive tree icons could not be built." },
+      });
+    }
+  };
+  app.get("/api/tree/icons.json", (_request, reply) =>
+    withIconAtlas(reply, (atlas) => atlas.index),
+  );
+  app.get("/api/tree/icons.png", (_request, reply) =>
+    withIconAtlas(reply, (atlas) =>
+      reply.type("image/png").header("cache-control", "private, max-age=3600").send(atlas.png),
+    ),
+  );
 
   app.get("/api/guides/:guideId/comments", async (request) => {
     const { guideId } = GuideParams.parse(request.params);

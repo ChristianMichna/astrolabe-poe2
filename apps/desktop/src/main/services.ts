@@ -153,6 +153,9 @@ export async function startServices(options: StartServicesOptions): Promise<Serv
       configPath: options.forgeConfigPath,
       stagesConfigPath: options.stagesConfigPath,
       calc,
+      ...(options.pob === undefined
+        ? {}
+        : { pobRoot: join(options.pob.pobHome, "PathOfBuilding-PoE2") }),
       ...(options.releasesDir === undefined ? {} : { releasesDir: options.releasesDir }),
       ...(options.exampleGuidesDir === undefined
         ? {}

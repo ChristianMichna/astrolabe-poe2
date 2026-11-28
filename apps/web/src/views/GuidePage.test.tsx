@@ -235,6 +235,25 @@ describe("guide page", () => {
     expect(await screen.findByText(/Tree is down\./)).toBeTruthy();
   });
 
+  it("says that the node pictures are missing and keeps the tree", async () => {
+    vi.stubGlobal("fetch", (url: string) =>
+      url.endsWith("/api/tree")
+        ? json({
+            dataReleaseId: view.catalogReleaseId,
+            passiveNodes: [],
+            passiveGroups: [],
+            skipped: [],
+          })
+        : url.includes("/api/tree/icons")
+          ? json({ error: { code: "icons_unavailable", message: "No sheets here." } }, 503)
+          : json(view),
+    );
+    window.location.hash = `#/guide/${GUIDE_ID}`;
+    render(<App />);
+    expect(await screen.findByText(/Node pictures are not available/)).toBeTruthy();
+    expect(screen.getByText(/No sheets here\./)).toBeTruthy();
+  });
+
   it("does not draw a tree of another release than the guide was read with", async () => {
     vi.stubGlobal("fetch", (url: string) =>
       url.endsWith("/api/tree")

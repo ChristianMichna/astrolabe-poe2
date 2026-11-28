@@ -4,6 +4,7 @@ import { ProvenanceBadge } from "../components/Provenance";
 import type { ProvenanceView } from "../components/provenance-model";
 import type { TreeCamera, TreeHighlight } from "./renderer";
 import type { TreeCanvasHandle } from "./TreeCanvas";
+import type { TreeIconSheet } from "./renderer";
 import { TreeCanvas } from "./TreeCanvas";
 import type { PassiveTreeView, TreeNodeShape, TreeNodeView } from "./tree-model";
 import type { TimelineState, TreeTimeline } from "./tree-timeline";
@@ -23,6 +24,8 @@ export interface PassiveTreeProps {
   readonly stageIndex?: number;
   /** Called when the reader moves the tree into another stage. */
   readonly onStageChange?: (index: number) => void;
+  /** Node pictures (see `TreeIconSheet`); the plain shapes show without them. */
+  readonly iconSheet?: TreeIconSheet;
   /** Where the tree data comes from (data release). */
   readonly provenance: ProvenanceView;
   /** Where the allocation comes from, e.g. a sample fixture or a guide revision. */
@@ -95,6 +98,7 @@ export function PassiveTree({
   onStageChange,
   provenance,
   allocationSource,
+  iconSheet,
 }: PassiveTreeProps) {
   const canvasRef = useRef<TreeCanvasHandle>(null);
   const insetRef = useRef<TreeCanvasHandle>(null);
@@ -251,6 +255,7 @@ export function PassiveTree({
         <TreeCanvas
           ref={canvasRef}
           view={view}
+          iconSheet={iconSheet}
           highlight={highlight}
           focus={hover && !hover.inset ? hover.id : undefined}
           initialFit={allocatedMain}
@@ -430,6 +435,7 @@ export function PassiveTree({
             <TreeCanvas
               ref={insetRef}
               view={ascendancy.view}
+              iconSheet={iconSheet}
               highlight={insetHighlight}
               focus={hover?.inset ? hover.id : undefined}
               bezel={false}
