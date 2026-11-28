@@ -1035,6 +1035,26 @@ code {
   pointer-events: none;
 }
 
+/* The item's own image: fills the cell, keeps its proportions, sits behind the labels. */
+.gear-cell__art {
+  position: absolute;
+  inset: var(--ef-space-4) var(--ef-space-1) var(--ef-space-5);
+  width: calc(100% - 2 * var(--ef-space-1));
+  height: calc(100% - var(--ef-space-4) - var(--ef-space-5));
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.gear-doll__credit {
+  margin: var(--ef-space-3) 0 0;
+  text-align: center;
+  font-family: var(--ef-font-mono);
+  font-size: var(--ef-text-3xs);
+  letter-spacing: var(--ef-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ef-color-text-faint);
+}
+
 .gear-cell[data-size="small"] .gear-cell__icon {
   width: 38%;
   top: var(--ef-space-5);

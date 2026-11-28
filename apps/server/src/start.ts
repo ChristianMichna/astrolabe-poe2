@@ -251,6 +251,7 @@ async function startServerOwningPool(
           logger: options.logger,
         });
   const app = createApp({
+    assetsDir: options.catalogDir,
     ...(craft === undefined ? {} : { craft }),
     ...(economy === undefined ? {} : { economy: economy.price }),
     ...(guideRevalidate === undefined ? {} : { guideRevalidate }),

@@ -1,4 +1,6 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -60,6 +62,8 @@ export interface AppOptions extends ForgeMcpDeps {
   port: number;
   /** Browser origins allowed to call the API (the app's own window). Requests without Origin pass. */
   allowedOrigins: readonly string[];
+  /** Data release directory; its `assets/items` images are served at /api/release-assets. */
+  assetsDir?: string;
   /** Default pipeline for new runs. */
   defaultPipelineId: string;
   /** Set in catalog-only mode (no matching engine); shown by /api/health and the app window. */
@@ -92,6 +96,8 @@ const CreateRunBody = z.object({
   pipelineId: z.string().min(1).optional(),
 });
 const RunParams = z.object({ runId: z.string().min(1) });
+/** One file name inside assets/items: no path separators, `..` or other suffixes. */
+const ItemImageParams = z.object({ file: z.string().regex(/^[\w-]+\.png$/) });
 const GuideParams = z.object({ guideId: z.string().min(1).max(200) });
 /** Name inside the exported `.build` file. */
 const BUILD_FILE_NAME_MAX_CHARS = 80;
@@ -304,6 +310,26 @@ export function createApp(options: AppOptions): FastifyInstance {
     });
     // The run has a new open task; the app shows its session code for Claude.
     return reply.code(201).send(buildCommentsView(guideId, commentRun(guideId)));
+  });
+
+  // Inventory images of the data release (ADR-0007). Only `assets/items/<name>.png` is served.
+  app.get("/api/release-assets/assets/items/:file", async (request, reply) => {
+    const { file } = ItemImageParams.parse(request.params);
+    const missing = (message: string) =>
+      reply.code(404).send({ error: { code: "not_found", message } });
+    if (options.assetsDir === undefined) return missing("This server has no data release images.");
+    let bytes: Buffer;
+    try {
+      bytes = await readFile(join(options.assetsDir, "assets", "items", file));
+    } catch (cause) {
+      // an absent image is the normal "no art for this item"; anything else is a fault
+      if ((cause as { code?: string }).code === "ENOENT") return missing(`No item image ${file}.`);
+      throw new Error(`cannot read item image ${file}`, { cause });
+    }
+    return reply
+      .header("content-type", "image/png")
+      .header("cache-control", "private, max-age=86400")
+      .send(bytes);
   });
 
   app.get("/api/guides/:guideId/view", async (request) => {

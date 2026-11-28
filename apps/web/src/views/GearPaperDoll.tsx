@@ -45,6 +45,8 @@ function Cell({
   const rarity = entry.target === null ? "empty" : (rarityOf(entry.target) ?? "normal");
   const icon = GEAR_LAYOUT.icons[entry.slot] ?? "generic";
   const [dismissed, setDismissed] = useState(false);
+  const [artBroken, setArtBroken] = useState(false);
+  const art = entry.target?.icon;
   const tipId = `gear-tip-${entry.budgetTier}-${entry.slot.replace(/\s+/g, "-")}`;
   const vertical = area === undefined || area.row > 3 ? "up" : "down";
   const side =
@@ -74,7 +76,17 @@ function Cell({
         {...(entry.target === null ? {} : { "aria-describedby": tipId })}
         onClick={() => onSelect(entry.slot)}
       >
-        <SlotIcon icon={icon} className="gear-cell__icon" />
+        {art !== undefined && !artBroken ? (
+          <img
+            className="gear-cell__art"
+            src={`/api/release-assets/${art}`}
+            alt=""
+            loading="lazy"
+            onError={() => setArtBroken(true)}
+          />
+        ) : (
+          <SlotIcon icon={icon} className="gear-cell__icon" />
+        )}
         <span className="gear-cell__slot">{entry.slot}</span>
         {entry.target === null ? (
           <span className="gear-cell__name">Not in game data</span>
@@ -150,6 +162,9 @@ export function GearPaperDoll({ entries, view, selected, onSelect }: Props) {
             />
           ))}
         </div>
+      ) : null}
+      {entries.some((e) => e.target?.icon !== undefined) ? (
+        <p className="gear-doll__credit">Item images: Graphics © Grinding Gear Games</p>
       ) : null}
     </div>
   );
