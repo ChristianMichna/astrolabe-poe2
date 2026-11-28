@@ -7,6 +7,8 @@ import { TreeIconAtlas } from "@astrolabe/contracts/guide";
 import { decodeBc1 } from "../src/tree-icons/bc1.js";
 import { buildIconAtlas, findTreeDataDir } from "../src/tree-icons/atlas.js";
 import { encodePng } from "../src/tree-icons/png.js";
+import type { CatalogPort } from "../src/ports/catalog.js";
+import { withCatalogIds } from "../src/tree-icons/catalog-ids.js";
 import { treeIconSource, type TreeIconSource } from "../src/tree-icons/source.js";
 import { CalcFake } from "../src/calc/calc-fake.js";
 import { PersistedCalc } from "../src/calc/persisted-calc.js";
@@ -90,13 +92,12 @@ describe("buildIconAtlas", () => {
     expect(await findTreeDataDir(root)).toMatch(/0_10$/);
   });
 
-  it("gives nodes with the same icon one cell and lists nodes without a picture", async () => {
+  it("gives nodes with the same icon one cell and leaves out nodes without a picture", async () => {
     const root = await treeFolder();
     const { index, png } = await buildIconAtlas(await findTreeDataDir(root));
-    expect(TreeIconAtlas.parse(index)).toBeTruthy();
     expect(index.icons["1"]).toBe(index.icons["3"]);
     expect(index.icons["2"]).not.toBe(index.icons["1"]);
-    expect(index.missing.sort()).toEqual(["4", "5"]);
+    expect(Object.keys(index.icons).sort()).toEqual(["1", "2", "3"]);
     expect(png.readUInt32BE(16)).toBe(index.width);
   });
 
@@ -107,6 +108,33 @@ describe("buildIconAtlas", () => {
     const real = await treeFolder();
     const again = treeIconSource(real);
     expect((await again()).index.cell).toBeGreaterThan(0);
+  });
+});
+
+describe("withCatalogIds", () => {
+  const node = (id: string, pobNodeId?: number) => ({
+    id,
+    name: id,
+    kind: "small",
+    stats: [],
+    position: { groupId: "g1", orbit: 0, orbitIndex: 0 },
+    connections: [],
+    ...(pobNodeId === undefined ? {} : { pobNodeId }),
+  });
+  const catalog = {
+    list: (kind: string) =>
+      kind === "passiveNode"
+        ? [node("Cat/A", 10), node("Cat/B", 11), node("Cat/C"), { id: "Broken", entity: {} }].map(
+            (entity) => ({ kind, id: entity.id, entity }),
+          )
+        : [],
+  } as unknown as CatalogPort;
+  const index = { cell: 96, columns: 2, width: 192, height: 96, icons: { "10": 1 } };
+
+  it("re-keys by catalog id and lists catalog nodes that have no picture", () => {
+    const atlas = TreeIconAtlas.parse(withCatalogIds(index, catalog));
+    expect(atlas.icons).toEqual({ "Cat/A": 1 });
+    expect(atlas.missing).toEqual(["Cat/B", "Cat/C"]);
   });
 });
 

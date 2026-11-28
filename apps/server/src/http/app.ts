@@ -16,12 +16,14 @@ import {
   collectCalcIds,
   GuideView,
   PassiveTreeData,
+  TreeIconAtlas,
   PublishedGuide,
 } from "@astrolabe/contracts/guide";
 import { guideToBuildFile } from "@astrolabe/exporters";
 import { buildCommentsView } from "../guides/comments.js";
 import type { RunRecord } from "../engine/run-record.js";
 import { buildGuideView } from "../guides/guide-view.js";
+import { withCatalogIds } from "../tree-icons/catalog-ids.js";
 import type { BuiltIconAtlas } from "../tree-icons/atlas.js";
 import type { TreeIconSource } from "../tree-icons/source.js";
 import { buildPassiveTreeData } from "../guides/tree-data.js";
@@ -249,6 +251,7 @@ export function createApp(options: AppOptions): FastifyInstance {
 
   // The icons are an extra: when they cannot be built the window keeps drawing the tree without
   // them, so this says why (and logs the cause) instead of failing as an internal error.
+  let iconIndex: TreeIconAtlas | undefined;
   const withIconAtlas = async (
     reply: FastifyReply,
     send: (atlas: BuiltIconAtlas) => unknown,
@@ -262,7 +265,9 @@ export function createApp(options: AppOptions): FastifyInstance {
       });
     }
     try {
-      return send(await options.treeIcons());
+      const built = await options.treeIcons();
+      iconIndex ??= TreeIconAtlas.parse(withCatalogIds(built.index, options.catalog));
+      return send({ png: built.png, index: iconIndex });
     } catch (error) {
       logger.error("tree icons failed", { error });
       return reply.code(503).send({

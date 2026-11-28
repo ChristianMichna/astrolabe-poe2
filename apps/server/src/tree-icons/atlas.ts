@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { zstdDecompress } from "node:zlib";
 import { promisify } from "node:util";
 import { z } from "zod";
-import type { TreeIconAtlas } from "@astrolabe/contracts/guide";
 import { decodeBc1 } from "./bc1.js";
 import { encodePng } from "./png.js";
 
@@ -23,9 +22,18 @@ const TreeFile = z.object({
   ddsCoords: z.record(z.string(), z.record(z.string(), z.number().int().positive())),
 });
 
+/** The picture's grid and which cell holds the icon of which PoB node (keyed by PoB's node id). */
+export interface PobIconIndex {
+  cell: number;
+  columns: number;
+  width: number;
+  height: number;
+  icons: Record<string, number>;
+}
+
 export interface BuiltIconAtlas {
   png: Buffer;
-  index: TreeIconAtlas;
+  index: PobIconIndex;
 }
 
 /** The newest `<major>_<minor>` folder under `<pobRoot>/src/TreeData`. */
@@ -117,7 +125,7 @@ function toRoundCell(src: Uint8Array, width: number, height: number): Uint8Array
 /**
  * Builds the node icon atlas from the passive tree data of Path of Building (`tree.json` and the
  * `skills_*` texture sheets of one `TreeData/<version>` folder). Every node with an icon in the
- * sheets gets a cell; nodes whose icon is not there are listed in `missing`.
+ * sheets gets a cell; nodes without one are absent from `icons`.
  */
 export async function buildIconAtlas(treeDir: string): Promise<BuiltIconAtlas> {
   const tree = TreeFile.parse(JSON.parse(await readFile(join(treeDir, "tree.json"), "utf8")));
@@ -154,14 +162,12 @@ export async function buildIconAtlas(treeDir: string): Promise<BuiltIconAtlas> {
   });
 
   const icons: Record<string, number> = {};
-  const missing: string[] = [];
   for (const [nodeId, node] of Object.entries(tree.nodes)) {
     const cell = node.icon === undefined ? undefined : cellOfIcon.get(node.icon);
-    if (cell === undefined) missing.push(nodeId);
-    else icons[nodeId] = cell;
+    if (cell !== undefined) icons[nodeId] = cell;
   }
   return {
     png: encodePng(pixels, width, height),
-    index: { cell: CELL, columns, width, height, icons, missing },
+    index: { cell: CELL, columns, width, height, icons },
   };
 }
