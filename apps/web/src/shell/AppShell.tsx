@@ -55,7 +55,8 @@ export function AppShell({ route, children }: { route: RouteId; children: ReactN
       <main className="content">{children}</main>
       <footer className="footer">
         Fan project. Not affiliated with or endorsed by Grinding Gear Games. Path of Exile is a
-        trademark of Grinding Gear Games. Passive tree icons © Grinding Gear Games.
+        trademark of Grinding Gear Games. Passive tree icons © Grinding Gear Games, taken from Path
+        of Building's data.
       </footer>
     </div>
   );

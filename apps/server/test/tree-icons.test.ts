@@ -101,6 +101,15 @@ describe("buildIconAtlas", () => {
     expect(png.readUInt32BE(16)).toBe(index.width);
   });
 
+  it("refuses a sheet whose header claims absurd sizes", async () => {
+    const root = await treeFolder();
+    const dir = await findTreeDataDir(root);
+    const broken = sheet([0xf800]);
+    broken.writeUInt32LE(4_000_000_000, 28); // mip levels
+    await writeFile(join(dir, "skills_8_8_BC1.dds.zst"), zstdCompressSync(broken));
+    await expect(buildIconAtlas(dir)).rejects.toThrow(/implausible header/);
+  });
+
   it("does not keep a failure: a later request builds again", async () => {
     const root = await mkdtemp(join(tmpdir(), "tree-icons-empty-"));
     const source = treeIconSource(root);

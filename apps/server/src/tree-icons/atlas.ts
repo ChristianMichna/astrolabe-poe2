@@ -15,6 +15,13 @@ const DDS_DATA_OFFSET = 148;
 const DXGI_BC1_UNORM = 71;
 /** Texture sheets with the allocatable node icons; the `-disabled` variants are greyed copies. */
 const ICON_SHEET = /^skills_\d+_\d+_BC1\.dds\.zst$/;
+/** Bounds for what a sheet may claim; the real sheets are far inside them (64 to 176 px, 354 slices, 8 mips). */
+const LIMITS = {
+  maxDecompressedBytes: 64 * 1024 * 1024,
+  maxEdge: 1024,
+  maxMips: 16,
+  maxSlices: 4096,
+};
 const TREE_VERSION_DIR = /^(\d+)_(\d+)$/;
 
 const TreeFile = z.object({
@@ -70,6 +77,17 @@ function parseSheet(data: Uint8Array, sheetName: string): DecodedSheet {
     throw new Error(`${sheetName} is not a BC1 texture array`);
   }
   const slices = view.getUint32(140, true);
+  const within = (value: number, min: number, max: number) => value >= min && value <= max;
+  if (
+    !within(width, 4, LIMITS.maxEdge) ||
+    !within(height, 4, LIMITS.maxEdge) ||
+    !within(mips, 1, LIMITS.maxMips) ||
+    !within(slices, 1, LIMITS.maxSlices)
+  ) {
+    throw new Error(
+      `${sheetName} has an implausible header (${width}x${height}, ${mips} mips, ${slices} slices)`,
+    );
+  }
   let sliceBytes = 0;
   for (let level = 0; level < mips; level++) {
     sliceBytes += Math.max(1, (width >> level) >> 2) * Math.max(1, (height >> level) >> 2) * 8;
@@ -137,7 +155,10 @@ export async function buildIconAtlas(treeDir: string): Promise<BuiltIconAtlas> {
   const cellOfIcon = new Map<string, number>();
   for (const sheetName of sheetNames) {
     const compressed = await readFile(join(treeDir, sheetName));
-    const sheet = parseSheet(await zstd(compressed), sheetName);
+    const sheet = parseSheet(
+      await zstd(compressed, { maxOutputLength: LIMITS.maxDecompressedBytes }),
+      sheetName,
+    );
     for (const [icon, slice] of Object.entries(tree.ddsCoords[sheetName] ?? {})) {
       if (cellOfIcon.has(icon)) continue;
       if (slice > sheet.slices) throw new Error(`${sheetName} has no slice ${slice} for ${icon}`);
