@@ -72,3 +72,5 @@ export const TreeIconAtlas = z
       seen.add(id);
     });
   });
+
+export type TreeIconAtlas = z.infer<typeof TreeIconAtlas>;
