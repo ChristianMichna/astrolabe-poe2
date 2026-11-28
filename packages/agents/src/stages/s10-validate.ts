@@ -928,24 +928,26 @@ async function measuredGates(
           continue;
         }
         // EHP is compared on the stage's own tree: the first gear tier is the same item set in every campaign
-        // stage while the enemies of a stage scale with its level, so a geared EHP falls from stage to stage
-        // (chance based defences most of all) however the tree grows. The geared value only has to be above zero.
+        // stage while the enemies of a stage scale with its level, so a geared EHP can fall from stage to stage
+        // however the tree grows (measured in a run: enemy damage and the evade chance of the same gear both differ by stage). The geared value only has to be above zero.
         const compared = field === "minEhp" ? stats[statName] : value;
         if (compared === undefined) {
           list.push(missing(gate, statName));
           continue;
         }
         const best = peak[field];
-        if (value <= 0 || (best !== undefined && compared < best * derived.minRatioToBest)) {
+        const noValue = value <= 0;
+        if (noValue || (best !== undefined && compared < best * derived.minRatioToBest)) {
           list.push(
             finding(
               gate,
               code,
-              value <= 0
+              noValue
                 ? `Stage ${stage.key} has none of the measured ${statName}.`
-                : `Stage ${stage.key} falls below the allowed share of the best ${statName} of the stages before it.`,
+                : `Stage ${stage.key} falls below the allowed share of the best ${statName} of the stages before it${field === "minEhp" ? ", measured on the stage's own tree" : ""}.`,
               path,
-              fixedBy,
+              // a tree that falls behind is the tree's gap, the gear only answers for a missing value
+              field === "minEhp" && !noValue ? returnTo : fixedBy,
             ),
           );
         }

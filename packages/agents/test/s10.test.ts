@@ -832,6 +832,15 @@ describe("S10 measured gates", () => {
       expect(collapsed).toContain("G4:ehp_below_minimum");
     });
 
+    it("reports a stage whose tree has no EHP, whatever the gear measures", async () => {
+      const noEhp: Record<string, number> = { ...good, Dps: 5000 };
+      delete noEhp.Ehp;
+      const found = (
+        await chain([at(100, 5000), noEhp], undefined, [at(900, 5000), at(900, 5000)])
+      ).flatMap((g) => g.findings.map((f) => `${g.gate}:${f.code}`));
+      expect(found).toContain("G4:stat_missing");
+    });
+
     it("requires every stage to have some EHP and damage", async () => {
       const found = await codes([at(0, 0), at(0, 0)]);
       expect(found.filter((c) => c === "G4:ehp_below_minimum")).toHaveLength(2);
