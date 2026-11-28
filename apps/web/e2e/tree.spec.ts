@@ -28,3 +28,26 @@ test("the timeline shows a respec stage with struck-through passives", async ({ 
   await expect(page.getByRole("tooltip")).toContainText("Respec");
   await expect(page.locator(".ef-tree__main")).toHaveScreenshot("passive-tree-respec.png");
 });
+
+test("the canvas follows the window size when the tree goes full screen and back", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 2170, height: 1340 });
+  await openTree(page);
+  const host = page.locator(".ef-tree__main");
+  const fits = async () => {
+    const box = await host.boundingBox();
+    const canvas = await host.locator("canvas").boundingBox();
+    if (box === null || canvas === null) return false;
+    return Math.abs(canvas.width - box.width) < 4 && Math.abs(canvas.height - box.height) < 4;
+  };
+  const before = (await host.boundingBox())?.width ?? 0;
+  await page.getByRole("button", { name: "Full screen" }).click();
+  await expect.poll(async () => ((await host.boundingBox())?.width ?? 0) > before).toBe(true);
+  await expect.poll(fits).toBe(true);
+  await page.getByRole("button", { name: "Full screen" }).click();
+  await expect
+    .poll(async () => Math.abs(((await host.boundingBox())?.width ?? 0) - before) < 4)
+    .toBe(true);
+  await expect.poll(fits).toBe(true);
+});
