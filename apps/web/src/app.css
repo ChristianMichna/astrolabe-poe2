@@ -907,28 +907,33 @@ code {
 
 /* Gear paper doll: framed cells in the arrangement of config/web/gear-layout.json */
 .gear-doll {
+  --gear-gap: 0.5rem;
   margin-bottom: var(--ef-space-5);
+  container-type: inline-size;
 }
 
-.gear-doll__body {
+.gear-doll__body,
+.gear-doll__extras {
+  /* square cells that shrink with the panel: 8 columns, 7 gaps, never larger than 7rem */
+  --gear-cell: min(7rem, calc((100cqw - 7 * var(--gear-gap)) / 8));
   display: grid;
-  gap: var(--ef-space-2);
-  max-width: 44rem;
-  margin: 0 auto;
+  gap: var(--gear-gap);
+  justify-content: center;
 }
 
 .gear-doll__extras {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  gap: var(--ef-space-2);
-  max-width: 44rem;
-  margin: var(--ef-space-3) auto 0;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--gear-cell);
+  grid-auto-rows: var(--gear-cell);
+  margin-top: var(--ef-space-4);
+  padding-top: var(--ef-space-4);
+  border-top: var(--ef-hairline) solid var(--ef-color-line);
 }
 
 .gear-cell {
   --gear-color: var(--ef-color-line);
   position: relative;
-  min-height: 3.5rem;
+  min-width: 0;
   display: flex;
 }
 
@@ -949,23 +954,26 @@ code {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.125rem;
+  justify-content: space-between;
   min-width: 0;
-  padding: var(--ef-space-2);
+  padding: 0.3rem 0.375rem;
   text-align: left;
   color: var(--ef-color-text);
-  border: var(--ef-hairline) solid color-mix(in srgb, var(--gear-color) 60%, transparent);
+  border: var(--ef-hairline) solid color-mix(in srgb, var(--gear-color) 55%, transparent);
   background:
-    linear-gradient(
-      to top,
-      color-mix(in srgb, var(--gear-color) 16%, transparent),
+    radial-gradient(
+      ellipse at 50% 45%,
+      color-mix(in srgb, var(--gear-color) 20%, transparent),
       transparent 70%
     ),
     var(--ef-color-inset);
   cursor: pointer;
   position: relative;
   overflow: hidden;
+}
+
+.gear-cell__frame:hover {
+  border-color: var(--gear-color);
 }
 
 .gear-cell__frame[aria-pressed="true"] {
@@ -978,39 +986,66 @@ code {
   outline-offset: 2px;
 }
 
-.gear-cell__glyph {
+.gear-cell__icon {
   position: absolute;
-  top: var(--ef-space-2);
-  right: var(--ef-space-2);
-  font-size: 1.5rem;
-  line-height: 1;
-  color: color-mix(in srgb, var(--gear-color) 55%, transparent);
+  top: 50%;
+  left: 50%;
+  width: min(55%, 4.5rem);
+  aspect-ratio: 1;
+  transform: translate(-50%, -58%);
+  color: color-mix(in srgb, var(--gear-color) 80%, transparent);
+  pointer-events: none;
+}
+
+.gear-cell[data-size="small"] .gear-cell__icon {
+  width: 38%;
+  top: 0.9rem;
+  transform: translateX(-50%);
+}
+
+.gear-cell[data-rarity="empty"] .gear-cell__icon {
+  opacity: 0.35;
+}
+
+.gear-cell__slot,
+.gear-cell__name,
+.gear-cell__base {
+  position: relative;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .gear-cell__slot {
+  -webkit-line-clamp: 1;
   font-family: var(--ef-font-mono);
-  font-size: var(--ef-text-xs);
+  font-size: 0.625rem;
   letter-spacing: var(--ef-tracking-caps);
   text-transform: uppercase;
   color: var(--ef-color-text-faint);
 }
 
 .gear-cell__name {
+  -webkit-line-clamp: 2;
   font-family: var(--ef-font-display);
-  font-size: var(--ef-text-sm);
+  font-size: var(--ef-text-xs);
+  line-height: 1.2;
   color: var(--gear-color);
   overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px var(--ef-color-inset);
 }
 
+/* The base type is in the hover card; the cell stays calm. */
 .gear-cell__base {
-  font-size: var(--ef-text-xs);
-  color: var(--ef-color-text-faint);
+  display: none;
 }
 
 .gear-cell__hover {
   display: none;
   position: absolute;
   z-index: 40;
+  /* The card never takes the pointer, so the next slot can be hovered straight away. */
+  pointer-events: none;
 }
 
 .gear-cell__hover--down {
@@ -1027,6 +1062,15 @@ code {
 
 .gear-cell__hover--left {
   right: calc(100% + var(--ef-space-2));
+}
+
+.gear-cell__hover--center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.gear-cell__hover--center.gear-cell__hover--up {
+  bottom: calc(100% + var(--ef-space-2));
 }
 
 /* Hover cards need a pointer that can hover; on touch the selected slot's panel below is the card. */

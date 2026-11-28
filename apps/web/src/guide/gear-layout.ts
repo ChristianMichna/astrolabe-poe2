@@ -13,7 +13,8 @@ const GearLayoutConfig = z
   .object({
     columns: z.number().int().min(1),
     slots: z.record(z.string().min(1), Area),
-    glyphs: z.record(z.string().min(1), z.string().min(1)),
+    /** Icon id per slot name (see SlotIcon); slots without an entry get a neutral icon. */
+    icons: z.record(z.string().min(1), z.string().min(1)),
     /** Slots that take the same place because a character wears only one of them (e.g. two-hand vs off-hand). */
     alternatives: z.array(z.array(z.string().min(1)).min(2)).default([]),
   })
@@ -34,11 +35,6 @@ const GearLayoutConfig = z
           }
           seen.set(key, slot);
         }
-      }
-    }
-    for (const glyphSlot of Object.keys(cfg.glyphs)) {
-      if (cfg.slots[glyphSlot] === undefined) {
-        ctx.addIssue({ code: "custom", message: `glyph for unknown slot ${glyphSlot}` });
       }
     }
   });
