@@ -744,12 +744,21 @@ describe("S10 measured gates", () => {
   describe("derived thresholds", () => {
     const derivedCfg = { ...cfg, thresholds: [], derived: { minRatioToBest: 0.8 } };
     /** One stage per stats entry, levels 10, 20, ...; `levels` overrides them. */
-    const chain = (list: (Record<string, number> | undefined)[], levels?: number[]) => {
+    const chain = (
+      list: (Record<string, number> | undefined)[],
+      levels?: number[],
+      geared?: Record<string, number>[],
+    ) => {
       const byId = new Map<string, Record<string, number> | undefined>();
       const idOfLevel = new Map<number, string>();
       const stages = list.map((stats, i) => {
         byId.set(`c${String(i)}`, stats);
-        idOfLevel.set(levels?.[i] ?? 10 * (i + 1), `c${String(i)}`);
+        const worn = geared?.[i];
+        if (worn !== undefined) byId.set(`g${String(i)}`, worn);
+        idOfLevel.set(
+          levels?.[i] ?? 10 * (i + 1),
+          worn === undefined ? `c${String(i)}` : `g${String(i)}`,
+        );
         return stage({
           key: `s${String(i)}`,
           kind: "campaign",
@@ -806,6 +815,21 @@ describe("S10 measured gates", () => {
       const found = await codes([at(1000, 5000), at(850, 4250), at(722, 3612), at(614, 3070)]);
       expect(found).toContain("G4:ehp_below_minimum");
       expect(found).toContain("G5:dps_below_minimum");
+    });
+
+    it("compares EHP on the stage's own tree, so enemies that scale with the level do not fail a growing tree", async () => {
+      // the same gear tier is worn in every stage: its EHP falls with the stronger enemies, the tree's rises
+      const bare = [at(100, 5000), at(200, 5000), at(300, 5000)];
+      const worn = [at(9000, 5000), at(5000, 5000), at(2000, 5000)];
+      const found = (await chain(bare, undefined, worn)).flatMap((g) =>
+        g.findings.map((f) => `${g.gate}:${f.code}`),
+      );
+      expect(found).not.toContain("G4:ehp_below_minimum");
+      // a tree that collapses still fails, whatever the gear measures
+      const collapsed = (await chain([at(300, 5000), at(100, 5000)], undefined, worn)).flatMap(
+        (g) => g.findings.map((f) => `${g.gate}:${f.code}`),
+      );
+      expect(collapsed).toContain("G4:ehp_below_minimum");
     });
 
     it("requires every stage to have some EHP and damage", async () => {

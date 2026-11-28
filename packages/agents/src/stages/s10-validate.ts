@@ -927,8 +927,16 @@ async function measuredGates(
           list.push(missing(gate, statName));
           continue;
         }
+        // EHP is compared on the stage's own tree: the first gear tier is the same item set in every campaign
+        // stage while the enemies of a stage scale with its level, so a geared EHP falls from stage to stage
+        // (chance based defences most of all) however the tree grows. The geared value only has to be above zero.
+        const compared = field === "minEhp" ? stats[statName] : value;
+        if (compared === undefined) {
+          list.push(missing(gate, statName));
+          continue;
+        }
         const best = peak[field];
-        if (value <= 0 || (best !== undefined && value < best * derived.minRatioToBest)) {
+        if (value <= 0 || (best !== undefined && compared < best * derived.minRatioToBest)) {
           list.push(
             finding(
               gate,
@@ -941,7 +949,7 @@ async function measuredGates(
             ),
           );
         }
-        peak[field] = Math.max(best ?? value, value);
+        peak[field] = Math.max(best ?? compared, compared);
         continue;
       }
       const min = limit(stage.state.level, field);
