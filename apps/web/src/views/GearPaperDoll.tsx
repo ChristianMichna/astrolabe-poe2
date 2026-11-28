@@ -4,12 +4,14 @@ import { ItemTooltip } from "@astrolabe/ui";
 import type { GuideGearEntry, GuideView } from "@astrolabe/contracts/guide";
 import { GEAR_LAYOUT } from "../guide/gear-layout";
 import { rarityOf, toItemView } from "../guide/gear-item";
+import { SlotIcon } from "./SlotIcon";
 
 /*
  * The gear as it sits on a character: one framed cell per slot in the arrangement of
  * config/web/gear-layout.json. Hovering or focusing a cell shows the full item card; selecting it
- * opens the slot's notes below. Slots the layout does not know go to a row underneath. The frames
- * and glyphs are our own; no game graphics.
+ * opens the slot's notes below. Slots the layout does not know (charms, flasks) go to a strip
+ * underneath. The frames and slot icons are our own; no game graphics. The hover card never takes
+ * the pointer (CSS), so moving on to the next slot works at once.
  */
 
 interface Props {
@@ -41,11 +43,12 @@ function Cell({
 }) {
   const area = GEAR_LAYOUT.slots[entry.slot];
   const rarity = entry.target === null ? "empty" : (rarityOf(entry.target) ?? "normal");
-  const glyph = GEAR_LAYOUT.glyphs[entry.slot] ?? "◇";
+  const icon = GEAR_LAYOUT.icons[entry.slot] ?? "generic";
   const [dismissed, setDismissed] = useState(false);
   const tipId = `gear-tip-${entry.budgetTier}-${entry.slot.replace(/\s+/g, "-")}`;
-  const vertical = area !== undefined && area.row > 3 ? "up" : "down";
-  const side = area !== undefined && area.col > GEAR_LAYOUT.columns / 2 ? "left" : "right";
+  const vertical = area === undefined || area.row > 3 ? "up" : "down";
+  const side =
+    area === undefined ? "center" : area.col > GEAR_LAYOUT.columns / 2 ? "left" : "right";
   const plan = view.guide.gear.tiers
     .find((t) => t.budgetTier === entry.budgetTier)
     ?.slots.find((s) => s.slot === entry.slot);
@@ -54,6 +57,9 @@ function Cell({
       className="gear-cell"
       style={cellStyle(entry.slot)}
       data-rarity={rarity}
+      data-size={
+        area === undefined || (area.colSpan === 1 && area.rowSpan === 1) ? "small" : "large"
+      }
       {...(dismissed ? { "data-dismissed": "" } : {})}
       onMouseLeave={() => setDismissed(false)}
       onBlur={() => setDismissed(false)}
@@ -68,9 +74,7 @@ function Cell({
         {...(entry.target === null ? {} : { "aria-describedby": tipId })}
         onClick={() => onSelect(entry.slot)}
       >
-        <span className="gear-cell__glyph" aria-hidden="true">
-          {glyph}
-        </span>
+        <SlotIcon icon={icon} className="gear-cell__icon" />
         <span className="gear-cell__slot">{entry.slot}</span>
         {entry.target === null ? (
           <span className="gear-cell__name">Not in game data</span>
@@ -116,10 +120,13 @@ export function GearPaperDoll({ entries, view, selected, onSelect }: Props) {
     <div className="gear-doll">
       <div
         className="gear-doll__body"
-        style={{
-          gridTemplateColumns: `repeat(${GEAR_LAYOUT.columns}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rows}, var(--gear-row, 4rem))`,
-        }}
+        style={
+          {
+            "--gear-cols": GEAR_LAYOUT.columns,
+            gridTemplateColumns: `repeat(${GEAR_LAYOUT.columns}, var(--gear-cell))`,
+            gridTemplateRows: `repeat(${rows}, var(--gear-cell))`,
+          } as CSSProperties
+        }
       >
         {placed.map((e) => (
           <Cell
