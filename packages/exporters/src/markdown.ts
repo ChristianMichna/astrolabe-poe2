@@ -108,9 +108,12 @@ export function guideToMarkdown(guide: PublishedGuide, resolve: MarkdownResolver
       h(3, plan.slot);
       for (const step of plan.steps) {
         out.push(
-          `${String(step.order + 1)}. ${text(step.goal)} (success ${measured(step.successChance, (v) => formatNumber(v))})`,
+          `${String(step.order + 1)}. ${text(step.goal)} (step check passed ${measured(step.successChance, percent)})`,
         );
       }
+      out.push(
+        `Chance of the whole plan (derived from the simulation): ${plan.successChance === undefined ? "not available (older guide)" : measured(plan.successChance, percent)}; expected attempts: ${plan.expectedAttempts === undefined ? "not available (older guide)" : measured(plan.expectedAttempts, (v) => formatNumber(v))}`,
+      );
       out.push(`Expected total: ${price(plan.expectedTotal)}`);
       if (plan.fallback !== undefined) para(plan.fallback);
     }
@@ -144,6 +147,12 @@ export function guideToMarkdown(guide: PublishedGuide, resolve: MarkdownResolver
     );
   }
   return `${out.join("\n\n")}\n`;
+}
+
+/** A chance as a percentage; a real value that rounds to zero is shown as "< 0.1%", never as 0. */
+function percent(chance: number): string {
+  const p = chance * 100;
+  return p > 0 && p < 0.1 ? "< 0.1%" : `${formatNumber(p)}%`;
 }
 
 function formatNumber(n: number): string {

@@ -206,6 +206,66 @@ describe("guide page", () => {
     expect(screen.getAllByText(/uncalibrated/i).length).toBeGreaterThan(0);
   });
 
+  it("shows the chance of the whole plan, and says so for a guide that has none", async () => {
+    const derived = {
+      kind: "derived",
+      formula: "crafting.plan",
+      formulaVersion: "1",
+      inputs: [
+        {
+          kind: "gamedata",
+          dataReleaseId: publishedGuide.metadata.dataReleaseId,
+          entity: { kind: "mod", id: "FixtureMod1" },
+          field: "/spawnWeights/0/weight",
+        },
+      ],
+    };
+    const withPlan = {
+      ...publishedGuide,
+      crafting: [
+        {
+          ...publishedGuide.crafting[0],
+          successChance: { status: "ok", value: 0.015, source: derived },
+          expectedAttempts: { status: "ok", value: 65, source: derived },
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", () => json({ ...view, guide: withPlan }));
+    window.location.hash = `#/guide/${GUIDE_ID}`;
+    render(<App />);
+    expect(await screen.findByText("Chance of the whole plan (%)")).toBeTruthy();
+    expect(screen.getByText("1.5")).toBeTruthy();
+    expect(screen.getByText("65.0")).toBeTruthy();
+    cleanup();
+
+    const older = {
+      ...publishedGuide,
+      crafting: [{ ...publishedGuide.crafting[0], successChance: undefined }],
+    };
+    vi.stubGlobal("fetch", () => json({ ...view, guide: older }));
+    render(<App />);
+    expect(
+      (await screen.findAllByText(/written before the chance of the whole plan was measured/))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Chance of the whole plan (%)")).toBeNull();
+    cleanup();
+
+    const tiny = {
+      ...withPlan,
+      crafting: [
+        {
+          ...withPlan.crafting[0],
+          successChance: { status: "ok", value: 0.00001, source: derived },
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", () => json({ ...view, guide: tiny }));
+    render(<App />);
+    expect(await screen.findByText(/below 0\.1% per attempt/)).toBeTruthy();
+    expect(screen.queryByText("Chance of the whole plan (%)")).toBeNull();
+  });
+
   it("shows a failed crafting number as an error, not as 0", async () => {
     const failedStep = {
       ...publishedGuide.crafting[0]?.steps[0],

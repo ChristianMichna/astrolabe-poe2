@@ -40,6 +40,42 @@ describe("guideToMarkdown", () => {
     expect(md).toContain("Deals 12,345.68 with Name of g");
   });
 
+  it("writes the chance of the whole plan, and says so for an older guide", () => {
+    const m = (value: number) => ({
+      status: "ok",
+      value,
+      source: {
+        kind: "gamedata",
+        dataReleaseId: "poe2-1.0.0+r1",
+        entity: { kind: "mod", id: "M" },
+        field: "/w",
+      },
+    });
+    const uncal = { status: "uncalibrated", reason: "x" };
+    const plan = {
+      slot: "Weapon 1",
+      steps: [{ order: 0, goal: t("Add a mod"), successChance: m(1) }],
+      expectedTotal: uncal,
+    };
+    const resolvers = { entityName: () => "n", statValue: () => 1 };
+    const withPlan = {
+      ...guide,
+      crafting: [{ ...plan, successChance: m(0.015), expectedAttempts: m(65) }],
+    } as never as PublishedGuide;
+    const md = guideToMarkdown(withPlan, resolvers);
+    expect(md).toContain("step check passed 100%");
+    expect(md).toContain(
+      "Chance of the whole plan (derived from the simulation): 1.5%; expected attempts: 65",
+    );
+    const tiny = {
+      ...guide,
+      crafting: [{ ...plan, successChance: m(0.00001), expectedAttempts: m(100000) }],
+    } as never as PublishedGuide;
+    expect(guideToMarkdown(tiny, resolvers)).toContain(": < 0.1%;");
+    const older = { ...guide, crafting: [plan] } as never as PublishedGuide;
+    expect(guideToMarkdown(older, resolvers)).toContain("not available (older guide)");
+  });
+
   it("fails with every unresolved reference instead of printing gaps", () => {
     expect(() =>
       guideToMarkdown(guide, { entityName: () => undefined, statValue: () => undefined }),
