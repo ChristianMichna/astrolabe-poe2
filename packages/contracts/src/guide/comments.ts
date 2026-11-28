@@ -10,7 +10,9 @@ import { IsoDateTime } from "../common/version.js";
 
 /**
  * Key of one task result the guide is made of: a written section ("S9.mechanics", "S9.stage-act-1")
- * or a crafting strategy ("S8.craft-<tier>-<slot>"), which the simulator measures again. Keys are
+ * a crafting strategy ("S8.craft-<tier>-<slot>"), which the simulator measures again, or a build
+ * choice (the gem setup "S5.gems", the stage notes "S6.notes", the gear of a tier "S7.gear-<tier>"),
+ * which Claude plans again and everything built on it is calculated again. Keys are
  * the pipeline's own; the list of keys a guide can be commented on comes from the server
  * (`GuideCommentsView.sections`); the app finds a part by the key helpers below, which a server
  * test holds equal to the pipeline's keys.
@@ -20,8 +22,8 @@ export const GuideSectionKey = z
   .min(3)
   .max(120)
   .regex(
-    /^(?:S9\.|S8\.craft-)[a-z0-9][a-z0-9.-]*$/,
-    "expected a guide section key like S9.mechanics or S8.craft-tier-slot",
+    /^(?:S9\.|S8\.craft-|S7\.gear-)[a-z0-9][a-z0-9.-]*$|^S6\.notes$|^S5\.gems$/,
+    "expected a guide section key like S9.mechanics, S8.craft-tier-slot, S7.gear-tier, S6.notes or S5.gems",
   );
 export type GuideSectionKey = z.infer<typeof GuideSectionKey>;
 
@@ -59,10 +61,12 @@ export const GuideSectionInfo = z.object({
   /** Name for the comment button and list, in the app's language. */
   label: z.string().min(1),
   /**
-   * The comment makes Claude plan the part again and the engine measures it again (crafting
-   * strategies: simulator and prices), not only rewrite text.
+   * What a comment on the part sets off: `rewrite` Claude writes the text again; `remeasure` Claude
+   * plans the part again and the engine measures it again (crafting: simulator and prices);
+   * `rebuild` Claude chooses again and everything built on the choice (later stages, gear,
+   * crafting, texts, costs) is calculated and written again with Path of Building.
    */
-  recalculates: z.boolean().default(false),
+  effect: z.enum(["rewrite", "remeasure", "rebuild"]).default("rewrite"),
 });
 export type GuideSectionInfo = z.infer<typeof GuideSectionInfo>;
 
@@ -77,6 +81,11 @@ export const GuideCommentsView = z.object({
   reason: z.string().min(1).optional(),
   sections: z.array(GuideSectionInfo),
   comments: z.array(GuideComment),
+  /**
+   * Earlier published versions of the guide, oldest first: the guide view of revision `n` is
+   * GET /api/guides/:guideId/view?revision=n, so the app can show what a comment changed.
+   */
+  revisions: z.int().nonnegative().default(0),
 });
 export type GuideCommentsView = z.infer<typeof GuideCommentsView>;
 
@@ -100,3 +109,6 @@ export const slotSectionKey = (tier: string, slot: string): string =>
 
 /** Key of the text written for a crafting plan (`CraftingPlan.key`). */
 export const craftTextSectionKey = (planKey: string): string => `S9.craft-${sectionSlug(planKey)}`;
+
+/** Key of the gear choice of a budget tier (`BudgetTierId`). */
+export const gearTierSectionKey = (tier: string): string => `S7.gear-${tier}`;

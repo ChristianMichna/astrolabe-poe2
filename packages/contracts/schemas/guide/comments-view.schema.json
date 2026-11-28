@@ -24,15 +24,20 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 120,
-            "pattern": "^(?:S9\\.|S8\\.craft-)[a-z0-9][a-z0-9.-]*$"
+            "pattern": "^(?:S9\\.|S8\\.craft-|S7\\.gear-)[a-z0-9][a-z0-9.-]*$|^S6\\.notes$|^S5\\.gems$"
           },
           "label": {
             "type": "string",
             "minLength": 1
           },
-          "recalculates": {
-            "default": false,
-            "type": "boolean"
+          "effect": {
+            "default": "rewrite",
+            "type": "string",
+            "enum": [
+              "rewrite",
+              "remeasure",
+              "rebuild"
+            ]
           }
         },
         "required": [
@@ -55,7 +60,7 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 120,
-            "pattern": "^(?:S9\\.|S8\\.craft-)[a-z0-9][a-z0-9.-]*$"
+            "pattern": "^(?:S9\\.|S8\\.craft-|S7\\.gear-)[a-z0-9][a-z0-9.-]*$|^S6\\.notes$|^S5\\.gems$"
           },
           "text": {
             "type": "string",
@@ -86,6 +91,12 @@
           "status"
         ]
       }
+    },
+    "revisions": {
+      "default": 0,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
     }
   },
   "required": [

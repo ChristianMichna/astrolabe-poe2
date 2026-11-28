@@ -45,6 +45,18 @@ export const loadGuideList = (signal?: AbortSignal): Promise<GuideListView> =>
 export const loadGuideView = (guideId: string, signal?: AbortSignal): Promise<GuideView> =>
   get(`/api/guides/${encodeURIComponent(guideId)}/view`, GuideView, signal);
 
+/** An earlier revision of a guide (`GuideCommentsView.revisions` counts them), for the comparison. */
+export const loadGuideRevision = (
+  guideId: string,
+  revision: number,
+  signal?: AbortSignal,
+): Promise<GuideView> =>
+  get(
+    `/api/guides/${encodeURIComponent(guideId)}/view?revision=${String(revision)}`,
+    GuideView,
+    signal,
+  );
+
 export const loadPassiveTree = (signal?: AbortSignal): Promise<PassiveTreeData> =>
   get("/api/tree", PassiveTreeData, signal);
 

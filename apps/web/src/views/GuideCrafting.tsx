@@ -153,11 +153,7 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
         </p>
       )}
       <SectionComments sectionKey={craftTextSectionKey(plan.key)} label={`${plan.slot} text`} />
-      <SectionComments
-        sectionKey={plan.key}
-        label={`${plan.slot} strategy`}
-        hint="Claude plans the crafting again and the simulator and prices measure it again."
-      />
+      <SectionComments sectionKey={plan.key} label={`${plan.slot} strategy`} />
     </Panel>
   );
 }

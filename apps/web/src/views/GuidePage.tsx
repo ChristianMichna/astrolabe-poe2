@@ -27,6 +27,7 @@ import { RichTextView, nameOf } from "../guide/RichTextView";
 import { BuildFileExportButton } from "./BuildFileExport";
 import { GuideFileExportButton, GuideImportButton } from "./GuideFile";
 import { CommentsBanner, GuideCommentsProvider, SectionComments } from "./SectionComments";
+import { RevisionDiffPanel } from "./RevisionDiffPanel";
 import { PageHeader } from "../shell/PageHeader";
 import { useGuideId } from "../shell/route";
 
@@ -156,6 +157,7 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
           }
         />
         <CommentsBanner />
+        <RevisionDiffPanel guideId={guideId} view={view} />
         {view.current ? null : (
           <Callout tone="warning" title="Older game data">
             This guide was built with {guide.metadata.dataReleaseId}; the app now runs with{" "}
@@ -243,6 +245,7 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
               view={view}
             />
             <Reasons title="Skill setups" items={mechanics.gemSetups} view={view} />
+            <SectionComments sectionKey="S5.gems" label="Skill setup" />
             {mechanics.defences.length > 0 ? (
               <>
                 <h3>Defences</h3>
@@ -279,6 +282,7 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
               content: <StageView stage={stage} previous={sortedStages[i - 1]} view={view} />,
             }))}
           />
+          <SectionComments sectionKey="S6.notes" label="Stage notes" />
         </section>
         <section id="guide-gear" className="guide-section" tabIndex={-1}>
           <GearMatrix view={view} />

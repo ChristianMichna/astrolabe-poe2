@@ -15,7 +15,7 @@ import {
 } from "@astrolabe/contracts/forge";
 import type { ForgeConfig } from "../config/forge-config.js";
 import {
-  commentDependents,
+  commentEffect,
   type CraftSimPort,
   type PricePort,
   type ProgressionPort,
@@ -755,7 +755,8 @@ export class ForgeEngine {
     comment: Extract<UserIntervention, { kind: "comment" }>,
   ): Extract<UserIntervention, { kind: "comment" }> {
     const r = tx.record;
-    if (commentDependents(comment.section) === undefined) {
+    const effect = commentEffect(comment.section);
+    if (effect === undefined) {
       throw new ForgeError("invalid_intervention", `${comment.section} is not a guide section.`);
     }
     if (r.phase === "failed") {
@@ -781,15 +782,41 @@ export class ForgeEngine {
       if (guide !== undefined) r.revisions.push(guide);
       tx.setPhase("planning");
     }
-    // The section is redone, with what is computed from it; validation and publishing run again.
-    const dropped = new Set(commentDependents(comment.section));
-    r.results = Object.fromEntries(
-      Object.entries(r.results).filter(
-        ([key, result]) => !dropped.has(key) && (stageNumber(result.type) ?? -1) < VALIDATION_STAGE,
-      ),
-    );
-    // A running price job computed from the old strategy; its answer must not come back.
-    if (dropped.has("S8.plan")) this.jobs.delete(r.runId);
+    // A rebuild replaces the open task (the plan may ask another one first). Comments handed to it
+    // and not applied yet go to Claude again with the redone task; read before results are dropped.
+    if (effect.effect === "rebuild") {
+      for (const entry of r.interventions) {
+        const { intervention } = entry;
+        if (intervention.kind !== "comment" || !entry.delivered) continue;
+        const result = r.results[intervention.section];
+        if (result !== undefined && Date.parse(result.at) >= Date.parse(entry.at)) continue;
+        entry.delivered = false;
+      }
+      if (r.current !== null) {
+        for (const ask of r.asks) {
+          if (ask.answer === undefined && ask.taskId === r.current.taskId) {
+            ask.answer = "(withdrawn: stage redone)";
+          }
+        }
+        r.current = null;
+      }
+    }
+    if (effect.effect === "rebuild") {
+      // A choice made again: what is built on it (later stages, plans, texts) is made again too.
+      // A choice that is already open again (an earlier comment) has nothing left to drop.
+      if (stored !== undefined) this.dropFrom(r, stored.type);
+    } else {
+      // The section is redone, with what is computed from it; validation and publishing run again.
+      const dropped = new Set(effect.drop);
+      r.results = Object.fromEntries(
+        Object.entries(r.results).filter(
+          ([key, result]) =>
+            !dropped.has(key) && (stageNumber(result.type) ?? -1) < VALIDATION_STAGE,
+        ),
+      );
+      // A running price job computed from the old strategy; its answer must not come back.
+      if (dropped.has("S8.plan")) this.jobs.delete(r.runId);
+    }
     r.returns = {};
     // Findings returned to this section belong to the text that is gone; those of others stay.
     r.returned = Object.fromEntries(

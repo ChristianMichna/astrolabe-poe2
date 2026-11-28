@@ -346,5 +346,9 @@ Revision. Der Status je Kommentar (`queued`/`working`/`applied`/`failed`) wird a
 abgeleitet. Importierte Guides haben keinen Lauf und sind nicht kommentierbar. Auch die
 Crafting-Strategie (`S8.craft-<Stufe>-<Slot>`) ist kommentierbar: Die Engine verwirft sie samt
 `S8.plan` (Simulator und Preise rechnen neu) und dem Plan-Text `S9.craft-…` (`commentDependents` in
-`packages/agents`); `GuideSectionInfo.recalculates` sagt es der App. Nicht enthalten: Kommentare auf
-Gear-Wahl, Tree und Gems (S5 bis S7), weil deren Neuberechnung alles danach verwirft.
+`packages/agents`); `GuideSectionInfo.effect` (`rewrite`/`remeasure`/`rebuild`) sagt es der App.
+Baustellen-Entscheidungen (`S5.gems`, `S6.notes`, `S7.gear-<tier>`) haben den Effekt `rebuild`:
+Die Engine verwirft die Aufgabe per `dropFrom` samt allem Nachfolgenden (PoB misst alles ab dieser
+Stufe neu, Crafting, Texte und Kosten entstehen über die normale Schleife neu). Der Kommentar geht
+nur an die Aufgabe des Abschnitts. `GET /api/guides/:id/view?revision=n` liefert eine frühere
+Fassung; die App rechnet daraus den Vorher-Nachher-Vergleich aus den gespeicherten PoB-Ergebnissen.

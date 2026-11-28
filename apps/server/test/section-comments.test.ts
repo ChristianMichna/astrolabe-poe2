@@ -293,7 +293,7 @@ describe("comments on a crafting strategy", () => {
     });
     const view = buildCommentsView(runId, store.findRunByGuideId(runId));
     expect(view.sections.find((s) => s.key === "S8.craft-a-ring")).toMatchObject({
-      recalculates: true,
+      effect: "remeasure",
     });
     const first = task(await engine.next(runId));
     expect(first.type).toBe("S8.craft-a-ring");
@@ -328,5 +328,157 @@ describe("comments on a crafting strategy", () => {
         text: "ok",
       }),
     ).rejects.toMatchObject({ code: "invalid_intervention" });
+  });
+});
+
+/** Gem setup (S5), stage notes (S6) and the gear of a tier (S7) come before the written guide. */
+const buildPipeline: Pipeline = {
+  id: "build-comment-test",
+  plan: (ctx) => {
+    const task = (key: string) =>
+      ({
+        kind: "task",
+        spec: defineTask<{ text: string }>({
+          key,
+          type: key,
+          instructions: `Write ${key}.`,
+          promptVersion: "t",
+          context: { gems: ctx.result("S5.gems") ?? null },
+          schema: z.object({ text: z.string() }),
+          allowedTools: [],
+        }),
+      }) as const;
+    for (const key of ["S5.gems", "S6.notes", "S7.gear-start", "S9.summary"]) {
+      if (ctx.result(key) === undefined) return task(key);
+    }
+    if (ctx.result("S10.report") === undefined) {
+      return { kind: "server", key: "S10.report", type: "S10", run: async () => ({ ok: true }) };
+    }
+    if (ctx.result("S11.guide") === undefined) {
+      return {
+        kind: "server",
+        key: "S11.guide",
+        type: "S11",
+        run: async () => ({ metadata: { guideId: ctx.run.runId, revision: 0 } }),
+      };
+    }
+    return { kind: "done" };
+  },
+};
+
+describe("comments on a build choice", () => {
+  async function finishedBuild() {
+    const store = new RunStore(":memory:");
+    const engine = new ForgeEngine({
+      store,
+      catalog: fixtureCatalog(),
+      calc: new PersistedCalc(new CalcFake({ dataReleaseId: RELEASE }), store),
+      config: CONFIG,
+      pipelines: [buildPipeline],
+      calcProfiles: CONFIG.pipelines.poc.calcProfiles,
+    });
+    const { runId, sessionCode } = await engine.createRun(REQUEST, "build-comment-test");
+    let step: ForgeStep = (await engine.attach(sessionCode)).next;
+    for (const text of ["gems 1", "notes 1", "gear 1", "summary 1"]) {
+      const t = task(step);
+      const out = await engine.submit({ runId, taskId: t.taskId, attempt: 1, payload: { text } });
+      if (out.result !== "accepted") throw new Error("rejected");
+      step = out.next;
+    }
+    expect(step.kind).toBe("done");
+    return { engine, store, runId };
+  }
+
+  it("asks the gear of a tier again, and every later stage after it, but not earlier ones", async () => {
+    const { engine, store, runId } = await finishedBuild();
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "g1",
+      section: "S7.gear-start",
+      text: "Use a different weapon.",
+    });
+    const view = buildCommentsView(runId, store.findRunByGuideId(runId));
+    expect(view.sections.find((s) => s.key === "S7.gear-start")).toMatchObject({
+      effect: "rebuild",
+    });
+    const gear = task(await engine.next(runId));
+    expect(gear.type).toBe("S7.gear-start");
+    expect(gear.feedback).toEqual([
+      expect.objectContaining({ commentId: "g1", previous: { text: "gear 1" } }),
+    ]);
+    let out = await engine.submit({
+      runId,
+      taskId: gear.taskId,
+      attempt: 1,
+      payload: { text: "gear 2" },
+    });
+    if (out.result !== "accepted") throw new Error("rejected");
+    // The guide text built on the gear is written again, and gets no comment.
+    const summary = task(out.next);
+    expect(summary.type).toBe("S9.summary");
+    expect(summary.feedback).toEqual([]);
+    out = await engine.submit({
+      runId,
+      taskId: summary.taskId,
+      attempt: 1,
+      payload: { text: "summary 2" },
+    });
+    expect(out.next.kind).toBe("done");
+    // Gems and notes before the gear were kept; the guide is a new revision.
+    expect(store.findRunByGuideId(runId)?.results["S5.gems"]?.value).toEqual({ text: "gems 1" });
+    expect(store.findGuide(runId)).toMatchObject({ metadata: { revision: 1 } });
+    expect(buildCommentsView(runId, store.findRunByGuideId(runId))).toMatchObject({ revisions: 1 });
+  });
+
+  it("asks everything after the gem setup again", async () => {
+    const { engine, runId } = await finishedBuild();
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "g2",
+      section: "S5.gems",
+      text: "Try another main skill.",
+    });
+    expect(task(await engine.next(runId)).type).toBe("S5.gems");
+  });
+
+  it("redoes the stage notes and what is built on them", async () => {
+    const { engine, runId } = await finishedBuild();
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "n1",
+      section: "S6.notes",
+      text: "More on dangers.",
+    });
+    const t = task(await engine.next(runId));
+    expect(t.type).toBe("S6.notes");
+    const out = await engine.submit({
+      runId,
+      taskId: t.taskId,
+      attempt: 1,
+      payload: { text: "n2" },
+    });
+    // What is built on the notes is made again, so the run is not finished yet.
+    expect(out.next.kind).toBe("task");
+  });
+
+  it("hands an earlier comment over again when a rebuild replaces its task", async () => {
+    const { engine, runId } = await finishedBuild();
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "c1",
+      section: "S5.gems",
+      text: "First.",
+    });
+    expect(task(await engine.next(runId)).type).toBe("S5.gems");
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "c2",
+      section: "S5.gems",
+      text: "Second.",
+    });
+    const t = task(await engine.next(runId));
+    const texts = (t.feedback ?? []).flatMap((f) => (f.kind === "comment" ? [f.text] : []));
+    expect(texts).toContain("First.");
+    expect(texts).toContain("Second.");
   });
 });

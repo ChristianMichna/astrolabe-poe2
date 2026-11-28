@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   craftTextSectionKey,
+  gearTierSectionKey,
   sectionSlug,
   slotSectionKey,
   stageSectionKey,
 } from "@astrolabe/contracts/guide";
-import { craftDetailKey, slotDetailKey, stageDetailKey, slotSlug } from "@astrolabe/agents";
+import {
+  craftDetailKey,
+  gearKey,
+  slotDetailKey,
+  stageDetailKey,
+  slotSlug,
+} from "@astrolabe/agents";
 
 /** The app derives section keys itself; they must be the keys the pipeline stores. */
 describe("section keys", () => {
@@ -15,6 +22,7 @@ describe("section keys", () => {
       expect(sectionSlug(id)).toBe(slotSlug(id));
       expect(stageSectionKey(id)).toBe(stageDetailKey(id));
       expect(craftTextSectionKey(id)).toBe(craftDetailKey(id));
+      expect(gearTierSectionKey(id)).toBe(gearKey(id));
       for (const tier of ids) expect(slotSectionKey(tier, id)).toBe(slotDetailKey(tier, id));
     }
   });
