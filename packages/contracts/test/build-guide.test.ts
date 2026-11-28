@@ -256,6 +256,35 @@ describe("number provenance in plans", () => {
     const fromMarket = { ...step, successChance: { status: "ok", value: 0.5, source: market } };
     expect(CraftingPlan.safeParse({ ...crafting, steps: [fromMarket] }).success).toBe(false);
   });
+
+  it("carries the whole-strategy chance and attempts optionally, with the same checks", () => {
+    const derived = {
+      kind: "derived",
+      formula: "fixture",
+      formulaVersion: "1",
+      inputs: [
+        {
+          kind: "gamedata",
+          dataReleaseId: releaseId,
+          entity: { kind: "mod", id: "FixtureMod1" },
+          field: "/spawnWeights/0/weight",
+        },
+      ],
+    };
+    const plan = {
+      ...crafting,
+      successChance: { status: "ok", value: 0.015, source: derived },
+      expectedAttempts: { status: "ok", value: 65, source: derived },
+    };
+    expect(CraftingPlan.safeParse(plan).error).toBeUndefined();
+    expect(CraftingPlan.safeParse(crafting).error).toBeUndefined();
+    const tooBig = { ...plan, successChance: { status: "ok", value: 2, source: derived } };
+    expect(CraftingPlan.safeParse(tooBig).success).toBe(false);
+    const fromMarket = { ...plan, successChance: { status: "ok", value: 0.5, source: market } };
+    expect(CraftingPlan.safeParse(fromMarket).success).toBe(false);
+    const negative = { ...plan, expectedAttempts: { status: "ok", value: -1, source: derived } };
+    expect(CraftingPlan.safeParse(negative).success).toBe(false);
+  });
 });
 
 describe("PublishedGuide", () => {

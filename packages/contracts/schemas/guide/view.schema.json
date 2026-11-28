@@ -7816,6 +7816,601 @@
                   }
                 ]
               },
+              "successChance": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "ok"
+                      },
+                      "value": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "source": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "gamedata"
+                              },
+                              "dataReleaseId": {
+                                "type": "string",
+                                "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                              },
+                              "entity": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "baseItem",
+                                      "mod",
+                                      "uniqueItem",
+                                      "gem",
+                                      "passiveNode",
+                                      "passiveGroup",
+                                      "characterClass",
+                                      "ascendancy",
+                                      "craftingAction",
+                                      "statTranslation"
+                                    ],
+                                    "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ]
+                              },
+                              "field": {
+                                "type": "string",
+                                "format": "starts_with",
+                                "pattern": "^\\/.*",
+                                "description": "JSON pointer into the catalog entity"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "dataReleaseId",
+                              "entity",
+                              "field"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "derived"
+                              },
+                              "formula": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "formulaVersion": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "inputs": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "pob"
+                                        },
+                                        "pobVersion": {
+                                          "type": "string",
+                                          "pattern": "^v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$",
+                                          "description": "Path of Building PoE2 release tag"
+                                        },
+                                        "dataReleaseId": {
+                                          "type": "string",
+                                          "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                          "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                                        },
+                                        "calcProfile": {
+                                          "type": "string",
+                                          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+                                          "description": "Calc profile id from config/calc-profiles/"
+                                        },
+                                        "calcId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 128,
+                                          "description": "Id of a single PoB calculation"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "pobVersion",
+                                        "dataReleaseId",
+                                        "calcProfile",
+                                        "calcId"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "gamedata"
+                                        },
+                                        "dataReleaseId": {
+                                          "type": "string",
+                                          "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                          "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                                        },
+                                        "entity": {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "baseItem",
+                                                "mod",
+                                                "uniqueItem",
+                                                "gem",
+                                                "passiveNode",
+                                                "passiveGroup",
+                                                "characterClass",
+                                                "ascendancy",
+                                                "craftingAction",
+                                                "statTranslation"
+                                              ],
+                                              "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                                            },
+                                            "id": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 512
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "id"
+                                          ]
+                                        },
+                                        "field": {
+                                          "type": "string",
+                                          "format": "starts_with",
+                                          "pattern": "^\\/.*",
+                                          "description": "JSON pointer into the catalog entity"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "dataReleaseId",
+                                        "entity",
+                                        "field"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "market"
+                                        },
+                                        "provider": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "description": "Provider id from config, e.g. the economy API in use"
+                                        },
+                                        "league": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "fetchedAt": {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                                          "description": "ISO 8601 timestamp"
+                                        },
+                                        "confidence": {
+                                          "type": "string",
+                                          "enum": [
+                                            "high",
+                                            "medium",
+                                            "low"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "provider",
+                                        "league",
+                                        "fetchedAt",
+                                        "confidence"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              },
+                              "seed": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "formula",
+                              "formulaVersion",
+                              "inputs"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "value",
+                      "source"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "uncalibrated"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "reason"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "failed"
+                      },
+                      "error": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "message": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "error"
+                    ]
+                  }
+                ]
+              },
+              "expectedAttempts": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "ok"
+                      },
+                      "value": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "source": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "gamedata"
+                              },
+                              "dataReleaseId": {
+                                "type": "string",
+                                "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                              },
+                              "entity": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "baseItem",
+                                      "mod",
+                                      "uniqueItem",
+                                      "gem",
+                                      "passiveNode",
+                                      "passiveGroup",
+                                      "characterClass",
+                                      "ascendancy",
+                                      "craftingAction",
+                                      "statTranslation"
+                                    ],
+                                    "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ]
+                              },
+                              "field": {
+                                "type": "string",
+                                "format": "starts_with",
+                                "pattern": "^\\/.*",
+                                "description": "JSON pointer into the catalog entity"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "dataReleaseId",
+                              "entity",
+                              "field"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "derived"
+                              },
+                              "formula": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "formulaVersion": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "inputs": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "pob"
+                                        },
+                                        "pobVersion": {
+                                          "type": "string",
+                                          "pattern": "^v?\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$",
+                                          "description": "Path of Building PoE2 release tag"
+                                        },
+                                        "dataReleaseId": {
+                                          "type": "string",
+                                          "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                          "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                                        },
+                                        "calcProfile": {
+                                          "type": "string",
+                                          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+                                          "description": "Calc profile id from config/calc-profiles/"
+                                        },
+                                        "calcId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 128,
+                                          "description": "Id of a single PoB calculation"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "pobVersion",
+                                        "dataReleaseId",
+                                        "calcProfile",
+                                        "calcId"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "gamedata"
+                                        },
+                                        "dataReleaseId": {
+                                          "type": "string",
+                                          "pattern": "^poe2-(\\d+(?:\\.\\d+){1,3})\\+r(\\d+)$",
+                                          "description": "Data release id, e.g. poe2-<gameVersion>+r<revision>"
+                                        },
+                                        "entity": {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "baseItem",
+                                                "mod",
+                                                "uniqueItem",
+                                                "gem",
+                                                "passiveNode",
+                                                "passiveGroup",
+                                                "characterClass",
+                                                "ascendancy",
+                                                "craftingAction",
+                                                "statTranslation"
+                                              ],
+                                              "description": "Kind of catalog entity (Astrolabe's own grouping, not a game concept)"
+                                            },
+                                            "id": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 512
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "id"
+                                          ]
+                                        },
+                                        "field": {
+                                          "type": "string",
+                                          "format": "starts_with",
+                                          "pattern": "^\\/.*",
+                                          "description": "JSON pointer into the catalog entity"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "dataReleaseId",
+                                        "entity",
+                                        "field"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "market"
+                                        },
+                                        "provider": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "description": "Provider id from config, e.g. the economy API in use"
+                                        },
+                                        "league": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "fetchedAt": {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                                          "description": "ISO 8601 timestamp"
+                                        },
+                                        "confidence": {
+                                          "type": "string",
+                                          "enum": [
+                                            "high",
+                                            "medium",
+                                            "low"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "provider",
+                                        "league",
+                                        "fetchedAt",
+                                        "confidence"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              },
+                              "seed": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "formula",
+                              "formulaVersion",
+                              "inputs"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "value",
+                      "source"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "uncalibrated"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "reason"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "failed"
+                      },
+                      "error": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "message": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "error"
+                    ]
+                  }
+                ]
+              },
               "fallback": {
                 "minItems": 1,
                 "maxItems": 200,
