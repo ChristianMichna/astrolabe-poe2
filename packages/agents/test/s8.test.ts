@@ -247,7 +247,28 @@ describe("S8 plan job", () => {
     const first = out.plans[0];
     expect(first?.successChance?.status).toBe("ok");
     expect(first?.successChance?.value).toBe(0.25);
-    expect(first?.expectedAttempts).toBeDefined();
+    expect(first?.expectedAttempts).toMatchObject({ status: "ok", value: 4 });
+  });
+
+  it("passes an uncalibrated whole-strategy result on unchanged", async () => {
+    const unc = { status: "uncalibrated", reason: "no success in the runs" };
+    const craft = {
+      simulate: () =>
+        Promise.resolve({
+          expectedCost: unc,
+          successChance: unc,
+          expectedAttempts: unc,
+          steps: [{ order: 0, reached: ok(1), passed: ok(1) }],
+        }),
+    };
+    const job = craftPlanJob(ctxWith(), [slot()], {} as never) as never as {
+      run: (c: unknown) => Promise<{
+        plans: { successChance?: unknown; expectedAttempts?: unknown }[];
+      }>;
+    };
+    const out = await job.run(ctxWith({ craft }));
+    expect(out.plans[0]?.successChance).toEqual(unc);
+    expect(out.plans[0]?.expectedAttempts).toEqual(unc);
   });
 
   it("uses the base price only for a start item without mods", async () => {
