@@ -27,7 +27,7 @@ export const gameDataConfigSchema = z
       .object({
         /** only images below this path of the bundles are taken */
         pathPrefix: z.string().min(1),
-        /** a run that fails on this share of the images or more fails the step */
+        /** the step fails when more than this share of the items has no image */
         maxFailedShare: z.number().min(0).max(1),
       })
       .strict()

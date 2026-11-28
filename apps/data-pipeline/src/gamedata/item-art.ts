@@ -231,7 +231,9 @@ async function readImages(
   sources: readonly string[],
   opts: ItemArtOptions,
   workDir: string,
-  failed: Map<string, string>,
+  out: string,
+  fileOf: ReadonlyMap<string, string>,
+  result: { done: Set<string>; failed: Map<string, string> },
 ): Promise<void> {
   if (sources.length === 0) return;
   try {
@@ -243,12 +245,28 @@ async function readImages(
     });
   } catch (cause) {
     if (sources.length === 1) {
-      failed.set(sources[0] as string, cause instanceof Error ? cause.message : String(cause));
+      result.failed.set(
+        sources[0] as string,
+        cause instanceof Error ? cause.message : String(cause),
+      );
       return;
     }
     const half = Math.ceil(sources.length / 2);
-    await readImages(sources.slice(0, half), opts, workDir, failed);
-    await readImages(sources.slice(half), opts, workDir, failed);
+    await readImages(sources.slice(0, half), opts, workDir, out, fileOf, result);
+    await readImages(sources.slice(half), opts, workDir, out, fileOf, result);
+    return;
+  }
+  // Every run clears `<workDir>/files` first, so the images are taken over before the next run.
+  for (const source of sources) {
+    try {
+      await copyFile(
+        join(workDir, "files", toolOutputName(source)),
+        join(out, fileOf.get(source) as string),
+      );
+      result.done.add(source);
+    } catch (cause) {
+      result.failed.set(source, `no converted image: ${(cause as Error).message}`);
+    }
   }
 }
 
@@ -264,29 +282,16 @@ export async function exportItemArt(opts: ItemArtOptions): Promise<ItemArtIndex>
   const out = resolve(opts.outDir);
   const sources = [...new Set(plan.jobs.map((j) => j.source))];
   const workDir = await mkdtemp(join(tmpdir(), "astrolabe-itemart-"));
-  const failed = new Map<string, string>();
-  const done = new Set<string>();
+  const result = { done: new Set<string>(), failed: new Map<string, string>() };
+  const fileOf = new Map(plan.jobs.map((j) => [j.source, j.file]));
   try {
     await mkdir(out, { recursive: true });
-    for (let i = 0; i < sources.length; i += FILES_PER_RUN) {
-      const batch = sources.slice(i, i + FILES_PER_RUN);
-      const before = new Set(failed.keys());
-      await readImages(batch, opts, workDir, failed);
-      for (const source of batch) {
-        if (before.has(source) || failed.has(source)) continue;
-        const file = (plan.jobs.find((j) => j.source === source) as ArtJob).file;
-        try {
-          await copyFile(join(workDir, "files", toolOutputName(source)), join(out, file));
-        } catch (cause) {
-          failed.set(source, `no converted image: ${(cause as Error).message}`);
-          continue;
-        }
-        done.add(source);
-      }
-    }
+    for (let i = 0; i < sources.length; i += FILES_PER_RUN)
+      await readImages(sources.slice(i, i + FILES_PER_RUN), opts, workDir, out, fileOf, result);
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
+  const { done, failed } = result;
   const items: Record<string, string> = {};
   const uniques: Record<string, string> = {};
   const failures = [...plan.missing];

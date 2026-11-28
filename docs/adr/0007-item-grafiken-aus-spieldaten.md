@@ -31,4 +31,4 @@ Item-Bilder.
 - Das Daten-Release enthält jetzt Spielgrafiken (Größe: ein PNG je Basis-Item).
 - Die Freigabe durch GGG ist mündlich über Christian; eine schriftliche Bestätigung wäre für
   eine öffentliche Weitergabe an Dritte sinnvoll.
-- Uniques haben eigene Bilder; sie folgen in einem Schritt danach (Tabelle der Unique-Optik).
+- Uniques: Bild über `UniqueStashLayout` (Name über `Words`, ohne Alternativ-Optik), gesetzt als `UniqueItem.icon`.

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -86,6 +86,8 @@ describe("exportItemArt", () => {
     const run: FileRunner = async ({ sources, workDir }) => {
       calls.push(sources.length);
       if (sources.includes(broken)) throw new Error("imagemagick exited with code 1.");
+      // like the real tool, every run starts with an empty files directory
+      await rm(join(workDir, "files"), { recursive: true, force: true });
       await mkdir(join(workDir, "files"), { recursive: true });
       for (const s of sources) await writeFile(join(workDir, "files", toolOutputName(s)), "png");
     };
