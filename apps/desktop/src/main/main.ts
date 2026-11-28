@@ -18,6 +18,7 @@ import { IPC } from "../shared/bridge.js";
 import { createAppProtocolHandler } from "./app-protocol.js";
 import { loadDesktopConfig, type DesktopConfig } from "./config.js";
 import { createHandlers } from "./ipc-handlers.js";
+import { focusWindow, showWindow } from "./window-guard.js";
 import { startDataSync, type DataSyncController } from "./data-sync.js";
 import { findDataRelease, knownReleaseIds, resolveAppDirs } from "./resources.js";
 import {
@@ -28,11 +29,14 @@ import {
   isDataSyncUrl,
   isTrustedSender,
 } from "./security.js";
+import { stopWithin } from "./shutdown.js";
 import { startServices, type Services } from "./services.js";
 import { StatusStore } from "./status.js";
 import { startUpdates, type UpdateController } from "./updater.js";
 
 const logger = createStderrLogger("desktop");
+/** The server and the calc pool get this long to stop when the app quits; then the app ends anyway. */
+const SHUTDOWN_LIMIT_MS = 10_000;
 /** Hosts a citation link may open; empty (nothing opens) until the configuration is loaded. */
 let citationHosts: readonly string[] = [];
 
@@ -78,9 +82,7 @@ if (!app.requestSingleInstanceLock()) {
     logger.info("second start while the app runs", {
       windowOpen: mainWindow !== undefined && !mainWindow.isDestroyed(),
     });
-    if (mainWindow === undefined) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    focusWindow(mainWindow);
   });
   app.on("web-contents-created", (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
@@ -112,10 +114,19 @@ if (!app.requestSingleInstanceLock()) {
     // Let the server and SQLite close cleanly before the process ends.
     event.preventDefault();
     stopped = true;
-    void services
-      .stop()
-      .catch((error: unknown) => logger.error("server stop failed", { error }))
-      .finally(() => app.quit());
+    void stopWithin(
+      () => services?.stop() ?? Promise.resolve(),
+      SHUTDOWN_LIMIT_MS,
+      (error) => logger.error("server stop failed", { error }),
+    ).then((outcome) => {
+      if (outcome === "timed-out") {
+        // Leave now: a process that lingers without a window blocks every later start.
+        logger.error("server did not stop in time, ending the app", { limitMs: SHUTDOWN_LIMIT_MS });
+        app.exit(0);
+      } else {
+        app.quit();
+      }
+    });
   });
   void app.whenReady().then(boot).catch(fatal);
 }
@@ -315,7 +326,10 @@ function createWindow(config: DesktopConfig): BrowserWindow {
       devTools: !app.isPackaged,
     },
   });
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => showWindow(win));
+  win.once("closed", () => {
+    if (mainWindow === win) mainWindow = undefined;
+  });
   win.once("closed", () => {
     if (mainWindow === win) mainWindow = undefined;
   });
