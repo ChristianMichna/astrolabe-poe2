@@ -361,6 +361,8 @@ export function craftPlanJob(
           },
           steps,
           expectedTotal: result.expectedCost,
+          successChance: result.successChance,
+          expectedAttempts: result.expectedAttempts,
           ...(sub.fallback === undefined ? {} : { fallback: sub.fallback }),
         });
       }
