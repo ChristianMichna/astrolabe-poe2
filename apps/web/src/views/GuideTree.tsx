@@ -107,6 +107,11 @@ function TreeBody({
         provenance={{ kind: "gamedata", dataRelease: data.dataReleaseId }}
         allocationSource={`Allocation: guide ${guide.metadata.guideId}`}
       />
+      {iconSheet === undefined ? null : (
+        <p className="tree-credit">
+          Node icons © Grinding Gear Games, taken from Path of Building&apos;s data.
+        </p>
+      )}
     </>
   );
 }
