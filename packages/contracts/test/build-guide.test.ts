@@ -280,6 +280,10 @@ describe("number provenance in plans", () => {
     expect(CraftingPlan.safeParse(crafting).error).toBeUndefined();
     const tooBig = { ...plan, successChance: { status: "ok", value: 2, source: derived } };
     expect(CraftingPlan.safeParse(tooBig).success).toBe(false);
+    const fromMarket = { ...plan, successChance: { status: "ok", value: 0.5, source: market } };
+    expect(CraftingPlan.safeParse(fromMarket).success).toBe(false);
+    const negative = { ...plan, expectedAttempts: { status: "ok", value: -1, source: derived } };
+    expect(CraftingPlan.safeParse(negative).success).toBe(false);
   });
 });
 
