@@ -143,6 +143,8 @@ export class TreeRenderer {
   private readonly nodes = new Graphics();
   private readonly iconLayer = new Container();
   private readonly icons = new Map<string, Sprite>();
+  private iconSource: ImageSource | undefined;
+  private readonly iconTextures: Texture[] = [];
   private readonly overlay = new Graphics();
   private readonly focusLayer = new Graphics();
   private focus: string | undefined;
@@ -238,6 +240,7 @@ export class TreeRenderer {
       autoGenerateMipmaps: true,
       scaleMode: "linear",
     });
+    this.iconSource = source;
     const cells = new Map<number, Texture>();
     for (const n of this.options.view.nodes.values()) {
       const cell = sheet.icons[n.id];
@@ -254,6 +257,7 @@ export class TreeRenderer {
           ),
         });
         cells.set(cell, texture);
+        this.iconTextures.push(texture);
       }
       const sprite = new Sprite(texture);
       sprite.anchor.set(0.5);
@@ -266,9 +270,8 @@ export class TreeRenderer {
     return this.icons.has(n.id);
   }
 
-  /** Size follows the zoom (radius has a pixel minimum); brightness follows allocation. */
-  private drawIcons(): void {
-    const h = this.highlight;
+  /** Position and size follow the zoom (radius has a pixel minimum); drawn with the static layer. */
+  private layoutIcons(): void {
     for (const [id, sprite] of this.icons) {
       const n = this.options.view.nodes.get(id);
       if (n === undefined) continue;
@@ -278,6 +281,14 @@ export class TreeRenderer {
       sprite.position.set(n.x, n.y);
       sprite.width = size;
       sprite.height = size;
+    }
+    this.tintIcons();
+  }
+
+  /** Brightness follows allocation. */
+  private tintIcons(): void {
+    const h = this.highlight;
+    for (const [id, sprite] of this.icons) {
       const on = h.allocated.has(id) || h.added.has(id);
       sprite.alpha = on ? 1 : ICON_FIT.idleAlpha;
       sprite.tint = on ? 0xffffff : ICON_FIT.idleTint;
@@ -289,6 +300,10 @@ export class TreeRenderer {
     this.destroyed = true;
     this.resizeObserver.disconnect();
     this.app.destroy({ removeView: true }, { children: true });
+    // The sprites are gone; free the cell textures and the GPU copy of the sheet. The sheet's image
+    // stays open: the window owns it and other canvases may still draw from it.
+    for (const texture of this.iconTextures) texture.destroy(false);
+    this.iconSource?.unload();
   }
 
   getCamera(): TreeCamera {
@@ -642,7 +657,7 @@ export class TreeRenderer {
       }
     }
     g.stroke({ width: ring * 1.2, color: c.keystone, alpha: 0.9 });
-    this.drawIcons();
+    this.layoutIcons();
   }
 
   /** Allocation, new points, respecs, search hits and focus. */
@@ -704,9 +719,13 @@ export class TreeRenderer {
     }
     o.stroke({ width: ring, color: c.allocated, alpha: 0.8 });
     // New points with a picture get a ring in the "new" colour instead of the filled shape.
-    for (const n of added) if (this.hasIcon(n)) o.circle(n.x, n.y, this.radius(n) * 1.45);
+    for (const n of added) {
+      if (!this.hasIcon(n)) continue;
+      // two rings: new points differ by shape as well as by colour
+      o.circle(n.x, n.y, this.radius(n) * 1.45).circle(n.x, n.y, this.radius(n) * 1.75);
+    }
     o.stroke({ width: ring * 1.2, color: c.added });
-    this.drawIcons();
+    this.tintIcons();
 
     // refunded: amber ring struck through
     for (const n of nodes(h.refunded)) {

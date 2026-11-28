@@ -53,8 +53,11 @@ export const loadPassiveTree = (signal?: AbortSignal): Promise<PassiveTreeData> 
  * The image goes through `fetch` like every other call, so the app protocol adds the access token.
  */
 export async function loadTreeIconSheet(signal?: AbortSignal): Promise<TreeIconSheet> {
-  const atlas = await get("/api/tree/icons.json", TreeIconAtlas, signal);
-  const response = await fetch("/api/tree/icons.png", signal ? { signal } : {});
+  const init = signal ? { signal } : {};
+  const [atlas, response] = await Promise.all([
+    get("/api/tree/icons.json", TreeIconAtlas, signal),
+    fetch("/api/tree/icons.png", init),
+  ]);
   if (!response.ok) {
     throw new ApiError(
       `The server answered HTTP ${response.status} for the icon image.`,
@@ -62,5 +65,17 @@ export async function loadTreeIconSheet(signal?: AbortSignal): Promise<TreeIconS
     );
   }
   const image = await createImageBitmap(await response.blob());
+  // The caller owns the bitmap; one that is not handed over is closed here.
+  if (signal?.aborted) {
+    image.close();
+    throw new DOMException("Aborted", "AbortError");
+  }
+  if (image.width !== atlas.width || image.height !== atlas.height) {
+    image.close();
+    throw new ApiError(
+      `The icon image is ${image.width}x${image.height} but its index says ${atlas.width}x${atlas.height}.`,
+      502,
+    );
+  }
   return { image, cell: atlas.cell, columns: atlas.columns, icons: atlas.icons };
 }

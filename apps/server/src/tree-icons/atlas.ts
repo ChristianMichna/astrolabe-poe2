@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { zstdDecompress } from "node:zlib";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -22,10 +23,16 @@ const LIMITS = {
   maxMips: 16,
   maxSlices: 4096,
 };
+const SUBSAMPLES: readonly (readonly [number, number])[] = [
+  [0.25, 0.25],
+  [0.75, 0.25],
+  [0.25, 0.75],
+  [0.75, 0.75],
+];
 const TREE_VERSION_DIR = /^(\d+)_(\d+)$/;
 
 const TreeFile = z.object({
-  nodes: z.record(z.string(), z.object({ icon: z.string().optional() }).passthrough()),
+  nodes: z.record(z.string(), z.object({ icon: z.string().optional() })),
   ddsCoords: z.record(z.string(), z.record(z.string(), z.number().int().positive())),
 });
 
@@ -127,12 +134,8 @@ function toRoundCell(src: Uint8Array, width: number, height: number): Uint8Array
       const at = (y * CELL + x) * 4;
       for (let channel = 0; channel < 3; channel++) {
         let sum = 0;
-        for (const dy of [0.25, 0.75]) {
-          for (const dx of [0.25, 0.75]) {
-            sum += sample((x + dx) / CELL, (y + dy) / CELL, channel);
-          }
-        }
-        out[at + channel] = Math.round(sum / 4);
+        for (const [dx, dy] of SUBSAMPLES) sum += sample((x + dx) / CELL, (y + dy) / CELL, channel);
+        out[at + channel] = Math.round(sum / SUBSAMPLES.length);
       }
       out[at + 3] = Math.round(alpha * 255);
     }
@@ -150,6 +153,9 @@ export async function buildIconAtlas(treeDir: string): Promise<BuiltIconAtlas> {
   const sheetNames = Object.keys(tree.ddsCoords).filter((name) => ICON_SHEET.test(name));
   if (sheetNames.length === 0) throw new Error(`No icon sheet in ${treeDir}`);
 
+  const wanted = new Set(
+    Object.values(tree.nodes).flatMap((node) => (node.icon === undefined ? [] : [node.icon])),
+  );
   // Icon path -> its pixels, one cell per distinct icon.
   const cells: Uint8Array[] = [];
   const cellOfIcon = new Map<string, number>();
@@ -160,12 +166,14 @@ export async function buildIconAtlas(treeDir: string): Promise<BuiltIconAtlas> {
       sheetName,
     );
     for (const [icon, slice] of Object.entries(tree.ddsCoords[sheetName] ?? {})) {
-      if (cellOfIcon.has(icon)) continue;
+      if (cellOfIcon.has(icon) || !wanted.has(icon)) continue;
       if (slice > sheet.slices) throw new Error(`${sheetName} has no slice ${slice} for ${icon}`);
       const offset = DDS_DATA_OFFSET + (slice - 1) * sheet.sliceBytes;
       const rgba = decodeBc1(sheet.data, offset, sheet.width, sheet.height);
       cellOfIcon.set(icon, cells.length);
       cells.push(toRoundCell(rgba, sheet.width, sheet.height));
+      // keep the server responsive (live status, MCP) while the atlas is built
+      if (cells.length % 25 === 0) await yieldToEventLoop();
     }
   }
 

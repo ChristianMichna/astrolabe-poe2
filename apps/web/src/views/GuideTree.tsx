@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Callout, Panel, PassiveTree, buildTimeline, buildTreeView } from "@astrolabe/ui";
 import type { GuideView, PassiveTreeData } from "@astrolabe/contracts/guide";
 import type { TreeIconSheet } from "@astrolabe/ui";
@@ -48,6 +48,15 @@ function TreeBody({
   stageIndex,
   onStageChange,
 }: { view: GuideView } & LoadedTreeData & StageProps) {
+  // The window owns the picture; it is released when the tree goes away or another one arrives.
+  useEffect(
+    () => () => {
+      if (typeof ImageBitmap !== "undefined" && iconSheet?.image instanceof ImageBitmap) {
+        iconSheet.image.close();
+      }
+    },
+    [iconSheet],
+  );
   const { guide } = view;
   const ascendancyId = guide.summary.ascendancyId;
   const prepared = useMemo(() => {

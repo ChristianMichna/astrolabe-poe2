@@ -6,12 +6,14 @@ export type TreeIconSource = () => Promise<BuiltIconAtlas>;
 export function treeIconSource(pobRoot: string): TreeIconSource {
   let built: Promise<BuiltIconAtlas> | undefined;
   return () => {
-    built ??= findTreeDataDir(pobRoot)
+    if (built !== undefined) return built;
+    const attempt: Promise<BuiltIconAtlas> = findTreeDataDir(pobRoot)
       .then(buildIconAtlas)
       .catch((error: unknown) => {
-        built = undefined; // a later request may succeed, e.g. after the files arrive
+        if (built === attempt) built = undefined; // a later request may succeed, e.g. after the files arrive
         throw new Error("Could not build the passive tree icons.", { cause: error });
       });
-    return built;
+    built = attempt;
+    return attempt;
   };
 }

@@ -28,7 +28,7 @@ export function encodePng(rgba: Uint8Array, width: number, height: number): Buff
   return Buffer.concat([
     SIGNATURE,
     chunk("IHDR", header),
-    chunk("IDAT", deflateSync(raw, { level: 9 })),
+    chunk("IDAT", deflateSync(raw, { level: 6 })),
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
