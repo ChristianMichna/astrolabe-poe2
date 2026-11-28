@@ -31,6 +31,7 @@ const view = {
       ...(rarity === "unique" ? { name } : {}),
       rarityName: rarity,
       baseName: rarity === "unique" ? "Fixture Base" : name,
+      ...(slot === "Helmet" ? { icon: "assets/items/Fixture_Helm.png" } : {}),
       itemClass: "fixture_class",
       implicits: [],
       explicits: [{ text: `${slot} modifier line` }],
@@ -42,7 +43,16 @@ const view = {
   unresolved: [],
 };
 
+// a 1x1 transparent PNG
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/release-assets/**", (route) =>
+    route.fulfill({ body: PNG, contentType: "image/png" }),
+  );
   await page.route(`**/api/guides/${guideId}/view`, (route) => route.fulfill({ json: view }));
   await page.route("**/api/tree", (route) =>
     route.fulfill({ json: { passiveNodes: [], passiveGroups: [], skipped: [] } }),
@@ -79,4 +89,18 @@ test("the hover card never keeps the next slot from being hovered", async ({ pag
   const body = page.locator(".gear-cell", { hasText: "Body Armour" }).first();
   await body.hover();
   await expect(body.locator(".gear-cell__hover")).toBeVisible();
+});
+
+test("a slot with a release image shows it, with the credit; the others keep the slot icon", async ({
+  page,
+}) => {
+  const helmet = page.locator(".gear-cell", { hasText: "Helmet" }).first();
+  await expect(helmet.locator("img.gear-cell__art")).toHaveAttribute(
+    "src",
+    "/api/release-assets/assets/items/Fixture_Helm.png",
+  );
+  await expect(
+    page.locator(".gear-cell", { hasText: "Belt" }).first().locator("svg.gear-cell__icon"),
+  ).toBeVisible();
+  await expect(page.getByText("Graphics © Grinding Gear Games")).toBeVisible();
 });

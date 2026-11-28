@@ -54,6 +54,7 @@ function itemCard(
       kind: "unique",
       name: unique.name,
       baseName: base.name,
+      ...(unique.icon === undefined ? {} : { icon: unique.icon }),
       itemClass: base.itemClass,
       implicits: base.implicitModIds.map((id) => line(id)),
       explicits: lines.map((m) => ({
@@ -71,6 +72,7 @@ function itemCard(
     rarityId: spec.rarity,
     ...(rarity === undefined ? {} : { rarityName: rarity.name }),
     baseName: base.name,
+    ...(base.icon === undefined ? {} : { icon: base.icon }),
     itemClass: base.itemClass,
     implicits: base.implicitModIds.map((id) => line(id)),
     explicits: spec.mods.map((m) => line(m.modId)),

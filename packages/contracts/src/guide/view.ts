@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CalcResult } from "../calc/result.js";
+import { ReleasePath } from "../catalog/entities.js";
 import { ClassificationId } from "../common/ids.js";
 import { DataReleaseId } from "../common/version.js";
 import { BudgetTierId } from "../build/request.js";
@@ -29,6 +30,12 @@ export const GuideItemCard = z.object({
   /** Unique item name; absent for crafted items. */
   name: z.string().min(1).optional(),
   baseName: z.string().min(1),
+  /**
+   * Inventory image of the item (a unique's own, else none) as a path inside the data release the
+   * server runs with; the server serves it at `/api/release-assets/<icon>`. Absent when the
+   * release has no image for the item; the app then shows its own slot icon.
+   */
+  icon: ReleasePath.optional(),
   itemClass: ClassificationId,
   implicits: z.array(GuideItemLine),
   explicits: z.array(GuideItemLine),
