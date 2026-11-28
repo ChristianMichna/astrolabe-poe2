@@ -140,3 +140,5 @@ Fixtures in `test/fixtures/` sind erfunden (`Fixture/…`) und enthalten kein
 Spielwissen.
 
 `ResearchFinding` und `ResearchSection` (seit 0.26.0, `guide/research.ts`, ADR-0006) tragen die Recherche: ein Befund hat eine Id, den Abschnitt, ein Thema, die Aussage als `RichText` (eigene Worte, Zahlen nur als `calc`-Segmente), die Quelle (nur https, Titel, Abrufdatum) und Katalog-Entitäten. `GuideDocument.research` (Standard leer) hält die Befunde eines Guides. Das Textsegment `source` zitiert einen Befund über seine Id; ob die Id existiert und welche Hosts erlaubt sind, prüfen die Gates mit Werten aus `config/`, nicht das Schema.
+
+`TreeIconAtlas` (seit 0.27.0, `guide/tree.ts`) beschreibt den Symbol-Atlas des Passive Trees (`GET /api/tree/icons.json`, Bild unter `/api/tree/icons.png`): Zellgröße, Spalten, Bildmaße, je Knoten-Id der Zellindex und die Knoten, deren Symbol fehlt. Das Bild entsteht zur Laufzeit aus den Baumdaten der Rechen-Engine und gehört nicht zum Daten-Release.
