@@ -3,6 +3,7 @@ import { craftTextSectionKey, type GuideView } from "@astrolabe/contracts/guide"
 import { SectionComments } from "./SectionComments";
 import { Callout, Panel, StatGrid, StatValue } from "@astrolabe/ui";
 import type { ValueState } from "@astrolabe/ui";
+import type { Measured } from "@astrolabe/contracts/common";
 import { measuredState } from "../guide/measured";
 import { priceLabel, priceState } from "../guide/price";
 import { RichTextView, nameOf } from "../guide/RichTextView";
@@ -45,8 +46,19 @@ function Cell(props: CellProps) {
   return <StatValue {...props} />;
 }
 
+const NO_PLAN_VALUE = "This guide was written before the chance of the whole plan was measured.";
+
+/** The whole-plan value, or "not available" for an older guide; never the step chance. */
+function planState(m: Measured<number> | undefined, scale = 1): ValueState {
+  return m === undefined
+    ? { status: "uncalibrated", reason: NO_PLAN_VALUE }
+    : measuredState(m, scale);
+}
+
 function missingReasons(plan: CraftingPlan): string[] {
   const states: ValueState[] = [
+    planState(plan.successChance, 100),
+    planState(plan.expectedAttempts),
     priceState(plan.start.cost),
     priceState(plan.expectedTotal),
     ...plan.steps.flatMap((s) => [
@@ -70,7 +82,7 @@ function StepNode({ step, view }: { step: CraftStep; view: GuideView }) {
         </p>
         <StatGrid>
           <Cell
-            label="Chance (%)"
+            label="Step check passed (%)"
             format="decimal1"
             state={measuredState(step.successChance, 100)}
           />
@@ -117,6 +129,20 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
           <Bullets title="Pitfalls" items={plan.guide.pitfalls} view={view} />
         </>
       )}
+      <StatGrid>
+        <Cell
+          label="Chance of the whole plan (%)"
+          format="decimal1"
+          state={planState(plan.successChance, 100)}
+          emphasis
+        />
+        <Cell
+          label="Expected attempts"
+          format="decimal1"
+          state={planState(plan.expectedAttempts)}
+          emphasis
+        />
+      </StatGrid>
       <ol className="craft-flow">
         <li className="craft-step craft-step--start">
           <div className="craft-step__card">

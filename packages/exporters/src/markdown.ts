@@ -108,9 +108,12 @@ export function guideToMarkdown(guide: PublishedGuide, resolve: MarkdownResolver
       h(3, plan.slot);
       for (const step of plan.steps) {
         out.push(
-          `${String(step.order + 1)}. ${text(step.goal)} (success ${measured(step.successChance, (v) => formatNumber(v))})`,
+          `${String(step.order + 1)}. ${text(step.goal)} (step check passed ${measured(step.successChance, (v) => formatNumber(v))})`,
         );
       }
+      out.push(
+        `Chance of the whole plan: ${plan.successChance === undefined ? "not available (older guide)" : measured(plan.successChance, (v) => `${formatNumber(v * 100)} %`)}; expected attempts: ${plan.expectedAttempts === undefined ? "not available (older guide)" : measured(plan.expectedAttempts, (v) => formatNumber(v))}`,
+      );
       out.push(`Expected total: ${price(plan.expectedTotal)}`);
       if (plan.fallback !== undefined) para(plan.fallback);
     }
