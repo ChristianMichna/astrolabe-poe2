@@ -5,7 +5,7 @@
 // The desktop app forbids 'unsafe-eval' in its CSP; this module replaces the
 // shader code generation that needs it, so the policy stays strict.
 import "pixi.js/unsafe-eval";
-import { Application, Container, Graphics } from "pixi.js";
+import { Application, Container, Graphics, Rectangle, Sprite, Texture, ImageSource } from "pixi.js";
 import type { PassiveTreeView, TreeEdgeView, TreeNodeShape, TreeNodeView } from "./tree-model";
 
 export interface TreeHighlight {
@@ -26,8 +26,24 @@ export interface TreeCamera {
   readonly y: number;
 }
 
+/**
+ * Node pictures: one image with square cells in rows (the server's icon atlas). The window loads
+ * it; the renderer only cuts cells. Nodes without an entry are drawn without a picture.
+ */
+export interface TreeIconSheet {
+  readonly image: ImageBitmap | HTMLImageElement | HTMLCanvasElement;
+  /** Edge length of one cell in pixels. */
+  readonly cell: number;
+  /** Cells per row. */
+  readonly columns: number;
+  /** Node id to cell index (row-major, from 0). */
+  readonly icons: Readonly<Record<string, number>>;
+}
+
 export interface TreeRendererOptions {
   readonly view: PassiveTreeView;
+  /** Pictures for notables, keystones, ascendancy and class starts; without them the plain shapes show. */
+  readonly iconSheet?: TreeIconSheet;
   /** Draw the engraved bezel ring around the whole tree. */
   readonly bezel?: boolean;
   readonly onHover?: (hit: { id: string; x: number; y: number } | null) => void;
@@ -47,6 +63,24 @@ const NODE_SIZE: Readonly<Record<TreeNodeShape, { r: number; minPx: number }>> =
   classStart: { r: 118, minPx: 6 },
   ascendancyStart: { r: 40, minPx: 3 },
   decoration: { r: 64, minPx: 0 },
+};
+
+/** Shapes that carry a picture when the sheet has one. */
+const ICON_SHAPES: ReadonlySet<TreeNodeShape> = new Set([
+  "notable",
+  "keystone",
+  "jewelSocket",
+  "ascendancyStart",
+  "classStart",
+]);
+/** Picture size relative to the node radius, and its brightness while not allocated. */
+const ICON_FIT = { diameter: 1.7, classStartDiameter: 1.2, idleAlpha: 0.62, idleTint: 0xa8a8a8 };
+
+const ICON_MIN_PX: Readonly<Partial<Record<TreeNodeShape, number>>> = {
+  notable: 4.5,
+  keystone: 6,
+  jewelSocket: 4,
+  ascendancyStart: 5,
 };
 
 const EDGE_WIDTH = { allocated: 11, allocatedMinPx: 2.2, glow: 3.4 };
@@ -107,6 +141,10 @@ export class TreeRenderer {
   private readonly baseEdges = new Graphics();
   private readonly activeEdges = new Graphics();
   private readonly nodes = new Graphics();
+  private readonly iconLayer = new Container();
+  private readonly icons = new Map<string, Sprite>();
+  private iconSource: ImageSource | undefined;
+  private readonly iconTextures: Texture[] = [];
   private readonly overlay = new Graphics();
   private readonly focusLayer = new Graphics();
   private focus: string | undefined;
@@ -139,10 +177,12 @@ export class TreeRenderer {
       this.baseEdges,
       this.activeEdges,
       this.nodes,
+      this.iconLayer,
       this.overlay,
       this.focusLayer,
     );
     app.stage.addChild(this.world);
+    this.buildIcons();
     for (const n of options.view.nodes.values()) {
       if (n.shape === "decoration") continue;
       const key = `${Math.floor(n.x / GRID)}:${Math.floor(n.y / GRID)}`;
@@ -191,11 +231,79 @@ export class TreeRenderer {
     }
   }
 
+  /** One sprite per node that has a picture; cells are cut from one shared texture. */
+  private buildIcons(): void {
+    const sheet = this.options.iconSheet;
+    if (sheet === undefined) return;
+    const source = new ImageSource({
+      resource: sheet.image,
+      autoGenerateMipmaps: true,
+      scaleMode: "linear",
+    });
+    this.iconSource = source;
+    const cells = new Map<number, Texture>();
+    for (const n of this.options.view.nodes.values()) {
+      const cell = sheet.icons[n.id];
+      if (cell === undefined || !ICON_SHAPES.has(n.shape)) continue;
+      let texture = cells.get(cell);
+      if (texture === undefined) {
+        texture = new Texture({
+          source,
+          frame: new Rectangle(
+            (cell % sheet.columns) * sheet.cell,
+            Math.floor(cell / sheet.columns) * sheet.cell,
+            sheet.cell,
+            sheet.cell,
+          ),
+        });
+        cells.set(cell, texture);
+        this.iconTextures.push(texture);
+      }
+      const sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      this.icons.set(n.id, sprite);
+      this.iconLayer.addChild(sprite);
+    }
+  }
+
+  private hasIcon(n: TreeNodeView): boolean {
+    return this.icons.has(n.id);
+  }
+
+  /** Position and size follow the zoom (radius has a pixel minimum); drawn with the static layer. */
+  private layoutIcons(): void {
+    for (const [id, sprite] of this.icons) {
+      const n = this.options.view.nodes.get(id);
+      if (n === undefined) continue;
+      const size =
+        this.radius(n) *
+        (n.shape === "classStart" ? ICON_FIT.classStartDiameter : ICON_FIT.diameter);
+      sprite.position.set(n.x, n.y);
+      sprite.width = size;
+      sprite.height = size;
+    }
+    this.tintIcons();
+  }
+
+  /** Brightness follows allocation. */
+  private tintIcons(): void {
+    const h = this.highlight;
+    for (const [id, sprite] of this.icons) {
+      const on = h.allocated.has(id) || h.added.has(id);
+      sprite.alpha = on ? 1 : ICON_FIT.idleAlpha;
+      sprite.tint = on ? 0xffffff : ICON_FIT.idleTint;
+    }
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
     this.resizeObserver.disconnect();
     this.app.destroy({ removeView: true }, { children: true });
+    // The sprites are gone; free the cell textures and the GPU copy of the sheet. The sheet's image
+    // stays open: the window owns it and other canvases may still draw from it.
+    for (const texture of this.iconTextures) texture.destroy(false);
+    this.iconSource?.unload();
   }
 
   getCamera(): TreeCamera {
@@ -415,7 +523,9 @@ export class TreeRenderer {
 
   private radius(n: TreeNodeView): number {
     const size = NODE_SIZE[n.shape];
-    return Math.max(size.r, this.px(size.minPx));
+    // Nodes with a picture stay big enough to be recognised when the tree is zoomed out.
+    const minPx = this.hasIcon(n) ? Math.max(size.minPx, ICON_MIN_PX[n.shape] ?? 0) : size.minPx;
+    return Math.max(size.r, this.px(minPx));
   }
 
   private path(g: Graphics, e: TreeEdgeView): void {
@@ -504,14 +614,13 @@ export class TreeRenderer {
     g.fill({ color: c.node });
 
     const ring = Math.max(5, this.px(1));
-    for (const n of byShape("notable")) {
-      const r = this.radius(n);
-      g.circle(n.x, n.y, r);
-    }
+    // A picture replaces the fill and the centre dot; the ring stays as the frame.
+    const plain = (shape: TreeNodeShape) => byShape(shape).filter((n) => !this.hasIcon(n));
+    for (const n of plain("notable")) g.circle(n.x, n.y, this.radius(n));
     g.fill({ color: c.notable, alpha: 0.25 });
     for (const n of byShape("notable")) g.circle(n.x, n.y, this.radius(n));
     g.stroke({ width: ring * 1.4, color: c.notable });
-    for (const n of byShape("notable")) g.circle(n.x, n.y, this.radius(n) * 0.42);
+    for (const n of plain("notable")) g.circle(n.x, n.y, this.radius(n) * 0.42);
     g.fill({ color: c.notable });
 
     for (const n of byShape("jewelSocket")) {
@@ -522,7 +631,7 @@ export class TreeRenderer {
     }
     g.stroke({ width: ring * 1.2, color: c.notable });
 
-    for (const n of byShape("keystone")) {
+    for (const n of plain("keystone")) {
       const r = this.radius(n);
       g.poly(polygon(n.x, n.y, r * 0.92, 8, 0.45));
     }
@@ -548,6 +657,7 @@ export class TreeRenderer {
       }
     }
     g.stroke({ width: ring * 1.2, color: c.keystone, alpha: 0.9 });
+    this.layoutIcons();
   }
 
   /** Allocation, new points, respecs, search hits and focus. */
@@ -597,17 +707,25 @@ export class TreeRenderer {
     for (const n of added) o.circle(n.x, n.y, this.radius(n) * 2.2);
     o.fill({ color: c.added, alpha: 0.14 });
     for (const n of allocated) {
-      if (h.added.has(n.id)) continue;
+      if (h.added.has(n.id) || this.hasIcon(n)) continue;
       this.shapePath(o, n, 1);
     }
     o.fill({ color: c.allocated });
-    for (const n of added) this.shapePath(o, n, 1);
+    for (const n of added) if (!this.hasIcon(n)) this.shapePath(o, n, 1);
     o.fill({ color: c.added });
     for (const n of allocated) {
       if (n.shape === "notable" || n.shape === "keystone" || n.shape === "jewelSocket")
         o.circle(n.x, n.y, this.radius(n) * 1.45);
     }
     o.stroke({ width: ring, color: c.allocated, alpha: 0.8 });
+    // New points with a picture get a ring in the "new" colour instead of the filled shape.
+    for (const n of added) {
+      if (!this.hasIcon(n)) continue;
+      // two rings: new points differ by shape as well as by colour
+      o.circle(n.x, n.y, this.radius(n) * 1.45).circle(n.x, n.y, this.radius(n) * 1.75);
+    }
+    o.stroke({ width: ring * 1.2, color: c.added });
+    this.tintIcons();
 
     // refunded: amber ring struck through
     for (const n of nodes(h.refunded)) {

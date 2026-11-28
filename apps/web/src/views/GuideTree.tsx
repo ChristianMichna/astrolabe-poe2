@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Callout, Panel, PassiveTree, buildTimeline, buildTreeView } from "@astrolabe/ui";
 import type { GuideView, PassiveTreeData } from "@astrolabe/contracts/guide";
-import { loadPassiveTree } from "../api/guides";
+import type { TreeIconSheet } from "@astrolabe/ui";
+import { loadPassiveTree, loadTreeIconSheet } from "../api/guides";
 import { useLoaded } from "../api/use-loaded";
 import { nameOf } from "../guide/RichTextView";
 
@@ -18,12 +19,44 @@ interface StageProps {
   readonly onStageChange?: ((index: number) => void) | undefined;
 }
 
+interface LoadedTreeData {
+  readonly data: PassiveTreeData;
+  /** Absent when the pictures could not be loaded; `iconsProblem` says why. */
+  readonly iconSheet?: TreeIconSheet;
+  readonly iconsProblem?: string;
+}
+
+/** The tree comes first; its pictures are an extra whose failure is shown, not hidden. */
+async function loadTreeWithIcons(signal: AbortSignal): Promise<LoadedTreeData> {
+  const data = await loadPassiveTree(signal);
+  try {
+    return { data, iconSheet: await loadTreeIconSheet(signal) };
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return {
+      data,
+      iconsProblem: error instanceof Error ? error.message : "The icons could not be loaded.",
+    };
+  }
+}
+
 function TreeBody({
   view,
   data,
+  iconSheet,
+  iconsProblem,
   stageIndex,
   onStageChange,
-}: { view: GuideView; data: PassiveTreeData } & StageProps) {
+}: { view: GuideView } & LoadedTreeData & StageProps) {
+  // The window owns the picture; it is released when the tree goes away or another one arrives.
+  useEffect(
+    () => () => {
+      if (typeof ImageBitmap !== "undefined" && iconSheet?.image instanceof ImageBitmap) {
+        iconSheet.image.close();
+      }
+    },
+    [iconSheet],
+  );
   const { guide } = view;
   const ascendancyId = guide.summary.ascendancyId;
   const prepared = useMemo(() => {
@@ -56,8 +89,14 @@ function TreeBody({
             : ""}
         </Callout>
       ) : null}
+      {iconsProblem !== undefined ? (
+        <Callout tone="warning" title="Node pictures are not available">
+          {iconsProblem} The tree is drawn with plain shapes.
+        </Callout>
+      ) : null}
       <PassiveTree
         view={prepared.main}
+        {...(iconSheet === undefined ? {} : { iconSheet })}
         ascendancy={{
           name: nameOf(view, { kind: "ascendancy", id: ascendancyId }) ?? ascendancyId,
           view: prepared.ascendancy,
@@ -68,6 +107,11 @@ function TreeBody({
         provenance={{ kind: "gamedata", dataRelease: data.dataReleaseId }}
         allocationSource={`Allocation: guide ${guide.metadata.guideId}`}
       />
+      {iconSheet === undefined ? null : (
+        <p className="tree-credit">
+          Node icons © Grinding Gear Games, taken from Path of Building&apos;s data.
+        </p>
+      )}
     </>
   );
 }
@@ -87,7 +131,7 @@ export function TreeSection({ view, stageIndex, onStageChange }: { view: GuideVi
 }
 
 function LoadedTree({ view, stageIndex, onStageChange }: { view: GuideView } & StageProps) {
-  const loaded = useLoaded((signal) => loadPassiveTree(signal), view.catalogReleaseId);
+  const loaded = useLoaded(loadTreeWithIcons, view.catalogReleaseId);
   return (
     <Panel title="Passive tree" kicker="By stage">
       {loaded.status === "loading" ? <p role="status">Loading tree data…</p> : null}
@@ -99,7 +143,7 @@ function LoadedTree({ view, stageIndex, onStageChange }: { view: GuideView } & S
       {loaded.status === "ready" ? (
         <TreeBody
           view={view}
-          data={loaded.value}
+          {...loaded.value}
           stageIndex={stageIndex}
           onStageChange={onStageChange}
         />

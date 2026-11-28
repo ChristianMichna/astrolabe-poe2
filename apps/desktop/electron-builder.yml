@@ -29,6 +29,8 @@ extraResources:
       - "!spec/**"
       - "!runtime-win32.zip"
       - "!**/*.zst"
+      # ... except the node icon sheets of the passive tree (about 4 MB), which the tree view cuts its pictures from.
+      - "src/TreeData/*/skills_*_BC1.dds.zst"
       - "!**/*.png"
       - "!**/*.jpg"
   - { from: ../calc/lua, to: calc-lua }

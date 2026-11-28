@@ -1194,3 +1194,10 @@ code {
 .guide-prose :is(ul, ol):last-child {
   margin-bottom: 0;
 }
+
+/* Source line under the passive tree (the node icons are Grinding Gear Games' artwork). */
+.tree-credit {
+  margin: var(--ef-space-2) 0 0;
+  color: var(--ef-color-text-faint);
+  font-size: var(--ef-text-xs);
+}
