@@ -11,7 +11,8 @@ import { Bullets } from "./GuideText";
 
 /*
  * The crafting plans of a guide as a flow: the base item, then every step with its goal, chance,
- * expected attempts and cost, and what happens when a step fails. Chances, attempts and prices
+ * expected attempts and cost, and what happens when a step fails; above them the chance and the
+ * expected attempts of the whole plan, which are what a player plans with. Chances, attempts and prices
  * keep their source; a value the engine does not have is shown as uncalibrated, never as 0.
  */
 
@@ -53,6 +54,12 @@ function planState(m: Measured<number> | undefined, scale = 1): ValueState {
   return m === undefined
     ? { status: "uncalibrated", reason: NO_PLAN_VALUE }
     : measuredState(m, scale);
+}
+
+/** A real chance below a tenth of a percent would show as 0.0; it is stated as a bound instead. */
+function tinyChance(plan: CraftingPlan): boolean {
+  const c = plan.successChance;
+  return c !== undefined && c.status === "ok" && c.value > 0 && c.value * 100 < 0.1;
 }
 
 function missingReasons(plan: CraftingPlan): string[] {
@@ -129,13 +136,21 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
           <Bullets title="Pitfalls" items={plan.guide.pitfalls} view={view} />
         </>
       )}
+      {tinyChance(plan) ? (
+        <p>
+          Chance of the whole plan: below 0.1% per attempt (measured, shown as a bound so that it is
+          not read as zero).
+        </p>
+      ) : null}
       <StatGrid>
-        <Cell
-          label="Chance of the whole plan (%)"
-          format="decimal1"
-          state={planState(plan.successChance, 100)}
-          emphasis
-        />
+        {tinyChance(plan) ? null : (
+          <Cell
+            label="Chance of the whole plan (%)"
+            format="decimal1"
+            state={planState(plan.successChance, 100)}
+            emphasis
+          />
+        )}
         <Cell
           label="Expected attempts"
           format="decimal1"

@@ -248,6 +248,22 @@ describe("guide page", () => {
       (await screen.findAllByText(/written before the chance of the whole plan was measured/))
         .length,
     ).toBeGreaterThan(0);
+    expect(screen.queryByText("Chance of the whole plan (%)")).toBeNull();
+    cleanup();
+
+    const tiny = {
+      ...withPlan,
+      crafting: [
+        {
+          ...withPlan.crafting[0],
+          successChance: { status: "ok", value: 0.00001, source: derived },
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", () => json({ ...view, guide: tiny }));
+    render(<App />);
+    expect(await screen.findByText(/below 0\.1% per attempt/)).toBeTruthy();
+    expect(screen.queryByText("Chance of the whole plan (%)")).toBeNull();
   });
 
   it("shows a failed crafting number as an error, not as 0", async () => {

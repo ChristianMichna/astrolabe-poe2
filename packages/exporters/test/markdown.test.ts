@@ -63,12 +63,17 @@ describe("guideToMarkdown", () => {
       crafting: [{ ...plan, successChance: m(0.015), expectedAttempts: m(65) }],
     } as never as PublishedGuide;
     const md = guideToMarkdown(withPlan, resolvers);
-    expect(md).toContain("step check passed 1");
-    expect(md).toContain("Chance of the whole plan: 1.5 %; expected attempts: 65");
-    const older = { ...guide, crafting: [plan] } as never as PublishedGuide;
-    expect(guideToMarkdown(older, resolvers)).toContain(
-      "Chance of the whole plan: not available (older guide)",
+    expect(md).toContain("step check passed 100%");
+    expect(md).toContain(
+      "Chance of the whole plan (derived from the simulation): 1.5%; expected attempts: 65",
     );
+    const tiny = {
+      ...guide,
+      crafting: [{ ...plan, successChance: m(0.00001), expectedAttempts: m(100000) }],
+    } as never as PublishedGuide;
+    expect(guideToMarkdown(tiny, resolvers)).toContain(": < 0.1%;");
+    const older = { ...guide, crafting: [plan] } as never as PublishedGuide;
+    expect(guideToMarkdown(older, resolvers)).toContain("not available (older guide)");
   });
 
   it("fails with every unresolved reference instead of printing gaps", () => {
