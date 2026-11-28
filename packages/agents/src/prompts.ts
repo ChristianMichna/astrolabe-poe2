@@ -36,6 +36,13 @@ export const S5_GEMS = (mainSkillPreset: boolean): string =>
     NO_MEMORY_RULES,
   ].join(" ");
 
+export const S5_STEER = [
+  "The player commented on the passive tree of this build. Turn the comment into constraints for the tree search: passive nodes that must be allocated (requiredNodeIds), nodes that must not be (forbiddenNodeIds) and nodes to look at first (priorityNodeIds).",
+  "Use only nodes of the main tree, found with catalog_search and catalog_get (not ascendancy nodes). Keep to what the comment asks; leave a list empty when it does not need it. The search stays within the point budget and Path of Building measures the result, so do not promise any numbers.",
+  "Explain in rationale how each constraint follows from the comment, without typing numbers.",
+  NO_MEMORY_RULES,
+].join(" ");
+
 export const S6_NOTES = [
   "For each progression stage, write what the player does in it (tasks), what can go wrong (dangers) and why the stage looks as it does (rationale).",
   "Use exactly the stage keys given in the context, each once. The passive allocations and their measurements are fixed and come from Path of Building; you only describe them.",

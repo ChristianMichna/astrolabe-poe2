@@ -291,6 +291,7 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
       budget: input.passivePoints,
       objective: this.objectiveFor(settings.objective, input.profile.mainSkillId),
       calcProfile: settings.calcProfiles[0] as CalcProfileId,
+      ...(input.steer === undefined ? {} : { steer: input.steer }),
     };
     const result = await this.optimizeMainTree(start, job, settings);
     // Checked before the ascendancy search, which would spend a whole search on a failed target.
@@ -498,6 +499,13 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
           `The tree search still picks nodes whose mods Path of Building does not calculate after ${String(maxRounds)} rounds: ${JSON.stringify(Object.fromEntries(triggers))}`,
         );
       }
+      // A node the player asked for is never banned: say so instead of failing in the next round.
+      const asked = (job.steer?.required ?? []).filter((id) => triggers.has(id as PassiveNodeId));
+      if (asked.length > 0) {
+        throw new Error(
+          `The comment asks for nodes whose mods Path of Building does not calculate: ${JSON.stringify(Object.fromEntries(asked.map((id) => [id, triggers.get(id as PassiveNodeId)])))}. Comment on the tree again without them.`,
+        );
+      }
       this.options.logger.info("tree search avoids nodes PoB does not calculate", {
         candidate: job.candidateKey,
         nodes: [...triggers.keys()],
@@ -523,6 +531,8 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
         floorsFromMetrics?: Record<string, string>;
       };
       calcProfile: CalcProfileId;
+      /** The player's comment on the tree, as node constraints. */
+      steer?: TargetRequest["steer"];
     },
     /** Nodes the search must not take besides the player's exclusions. */
     avoided: readonly PassiveNodeId[] = [],
@@ -538,7 +548,22 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
         .filter((e) => e.kind === "passiveNode")
         .map((e) => e.id as PassiveNodeId),
       ...avoided,
+      ...(job.steer?.forbidden ?? []).map((id) => id as PassiveNodeId),
     ];
+    const required = (job.steer?.required ?? []).map((id) => id as PassiveNodeId);
+    const outside = required.filter((id) => !graph.has(id));
+    if (outside.length > 0) {
+      throw new Error(
+        `The comment asks for nodes outside the main tree of this class: ${JSON.stringify(outside)}`,
+      );
+    }
+    const forbiddenRequired = required.filter((id) => excluded.includes(id));
+    if (forbiddenRequired.length > 0) {
+      throw new Error(
+        `The comment asks for nodes that are excluded or forbidden: ${JSON.stringify(forbiddenRequired)}`,
+      );
+    }
+    const steered = (job.steer?.priority ?? []).map((id) => id as PassiveNodeId);
     const optimize = this.options.optimize ?? optimizeTree;
     const startedAt = Date.now();
     const result: TreeOptimizeResult = await this.options.pob.withBuild(start, (handle) =>
@@ -555,7 +580,8 @@ export class PobSkeleton implements SkeletonPort, TargetPort, ProgressionPort {
           overrides: job.request.calcOverrides,
         }),
         config: this.options.optimizerConfig,
-        priorityNodeIds: job.profile.relevantNodes.filter((id) => graph.has(id)),
+        priorityNodeIds: [...steered, ...job.profile.relevantNodes].filter((id) => graph.has(id)),
+        ...(required.length === 0 ? {} : { requiredNodeIds: required }),
         forbiddenNodeIds: excluded.filter((id) => graph.has(id)),
       }),
     );

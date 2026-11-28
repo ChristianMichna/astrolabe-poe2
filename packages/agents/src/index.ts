@@ -45,7 +45,14 @@ export {
   userEntities,
 } from "./stages/s2-candidates.js";
 export { requestContext } from "./stages/context.js";
-export { GemSetupSubmission, S5_GEMS_KEY, S5_TARGET_KEY, S5_TREE_KEY } from "./stages/s5-target.js";
+export {
+  GemSetupSubmission,
+  S5_GEMS_KEY,
+  S5_STEER_KEY,
+  S5_TARGET_KEY,
+  S5_TREE_KEY,
+  TreeSteer,
+} from "./stages/s5-target.js";
 export {
   ProgressionNotes,
   S6_NOTES_KEY,

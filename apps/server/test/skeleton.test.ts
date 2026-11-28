@@ -653,6 +653,61 @@ describe("PobSkeleton", () => {
       expect(kept.state.tree.allocated.map((n) => n.nodeId)).toEqual(["FixN1", "FixN2"]);
     });
 
+    it("keeps to the player's steering of the tree", async () => {
+      const clean = setup(done);
+      await clean.skeleton.optimizeTree({
+        ...input,
+        steer: { required: ["FixN2"], forbidden: [], priority: ["FixN2"] },
+      });
+      const call = clean.optimize.mock.calls[0]?.[0];
+      expect(call?.requiredNodeIds).toEqual(["FixN2"]);
+      expect(call?.priorityNodeIds?.[0]).toBe("FixN2");
+      const forbid = setup(done);
+      await forbid.skeleton.optimizeTree({
+        ...input,
+        steer: { required: [], forbidden: ["FixN1"], priority: [] },
+      });
+      expect(forbid.optimize.mock.calls[0]?.[0].forbiddenNodeIds).toContain("FixN1");
+    });
+
+    it("refuses a required node that is forbidden or outside the tree, and one PoB cannot calculate", async () => {
+      const { skeleton } = setup(done);
+      await expect(
+        skeleton.optimizeTree({
+          ...input,
+          steer: { required: ["FixN1"], forbidden: ["FixN1"], priority: [] },
+        }),
+      ).rejects.toThrow(/excluded or forbidden/);
+      await expect(
+        skeleton.optimizeTree({
+          ...input,
+          steer: { required: ["FixNowhere"], forbidden: [], priority: [] },
+        }),
+      ).rejects.toThrow(/outside the main tree/);
+      const text = "Fixture main tree mod PoB ignores";
+      const flawed = new MemoryCatalog(RELEASE, [
+        ...SHARDS,
+        CatalogShard.parse({
+          schemaVersion: 1,
+          dataReleaseId: RELEASE,
+          kind: "passiveNode",
+          entities: [
+            node("FixStartA", ["FixN1"], { classStartFor: ["FixClassA"] }),
+            node("FixN1", ["FixStartA", "FixN2"]),
+            node("FixN2", ["FixN1"], { stats: [{ text }] }),
+          ],
+        }),
+      ]);
+      const unsupported = setup(done, undefined, flawed);
+      unsupported.getResult.mockResolvedValueOnce({ unsupportedMods: [text] } as never);
+      await expect(
+        unsupported.skeleton.optimizeTree({
+          ...input,
+          steer: { required: ["FixN2"], forbidden: [], priority: [] },
+        }),
+      ).rejects.toThrow(/asks for nodes whose mods/);
+    });
+
     it("matches the lines of a multi-line stat text one by one", async () => {
       const line = "Second line PoB ignores";
       const flawed = new MemoryCatalog(RELEASE, [

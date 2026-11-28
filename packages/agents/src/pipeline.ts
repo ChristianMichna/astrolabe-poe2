@@ -39,6 +39,8 @@ export interface PipelineContext {
   latest<K extends UserIntervention["kind"]>(
     kind: K,
   ): Extract<UserIntervention, { kind: K }> | undefined;
+  /** Texts of the player's comments on a guide section (oldest first); empty without any. */
+  commentsOn?(section: string): readonly string[];
   /** Accepted result of a task or server step, undefined if not done yet. */
   result(key: string): JsonValue | undefined;
 }

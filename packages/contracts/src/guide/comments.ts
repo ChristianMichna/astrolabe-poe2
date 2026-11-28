@@ -11,7 +11,7 @@ import { IsoDateTime } from "../common/version.js";
 /**
  * Key of one task result the guide is made of: a written section ("S9.mechanics", "S9.stage-act-1")
  * a crafting strategy ("S8.craft-<tier>-<slot>"), which the simulator measures again, or a build
- * choice (the gem setup "S5.gems", the stage notes "S6.notes", the gear of a tier "S7.gear-<tier>"),
+ * choice (the gem setup "S5.gems", the stage notes "S6.notes", the gear of a tier "S7.gear-<tier>", the passive tree "S5.steer"),
  * which Claude plans again and everything built on it is calculated again. Keys are
  * the pipeline's own; the list of keys a guide can be commented on comes from the server
  * (`GuideCommentsView.sections`); the app finds a part by the key helpers below, which a server
@@ -22,8 +22,8 @@ export const GuideSectionKey = z
   .min(3)
   .max(120)
   .regex(
-    /^(?:S9\.|S8\.craft-|S7\.gear-)[a-z0-9][a-z0-9.-]*$|^S6\.notes$|^S5\.gems$/,
-    "expected a guide section key like S9.mechanics, S8.craft-tier-slot, S7.gear-tier, S6.notes or S5.gems",
+    /^(?:S9\.|S8\.craft-|S7\.gear-)[a-z0-9][a-z0-9.-]*$|^S6\.notes$|^S5\.(?:gems|steer)$/,
+    "expected a guide section key like S9.mechanics, S8.craft-tier-slot, S7.gear-tier, S6.notes, S5.gems or S5.steer",
   );
 export type GuideSectionKey = z.infer<typeof GuideSectionKey>;
 

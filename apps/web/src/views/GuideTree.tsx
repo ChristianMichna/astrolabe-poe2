@@ -5,6 +5,7 @@ import type { TreeIconSheet } from "@astrolabe/ui";
 import { loadPassiveTree, loadTreeIconSheet } from "../api/guides";
 import { useLoaded } from "../api/use-loaded";
 import { nameOf } from "../guide/RichTextView";
+import { SectionComments } from "./SectionComments";
 
 /*
  * The passive tree of a guide: its allocation, stage by stage, on the tree of the data release
@@ -148,6 +149,7 @@ function LoadedTree({ view, stageIndex, onStageChange }: { view: GuideView } & S
           onStageChange={onStageChange}
         />
       ) : null}
+      <SectionComments sectionKey="S5.steer" label="Passive tree" />
     </Panel>
   );
 }

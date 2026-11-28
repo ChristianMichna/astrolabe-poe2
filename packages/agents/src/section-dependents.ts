@@ -1,4 +1,4 @@
-import { S5_GEMS_KEY } from "./stages/s5-target.js";
+import { S5_GEMS_KEY, S5_STEER_KEY } from "./stages/s5-target.js";
 import { S6_NOTES_KEY } from "./stages/s6-progression.js";
 import { S7_GEAR_PREFIX } from "./stages/s7-gear.js";
 import { S8_CRAFT_PREFIX, S8_PLAN_KEY } from "./stages/s8-craft.js";
@@ -26,5 +26,9 @@ export function commentEffect(section: string): CommentEffect | undefined {
   if (section === S5_GEMS_KEY || section === S6_NOTES_KEY || section.startsWith(S7_GEAR_PREFIX)) {
     return { effect: "rebuild", from: section };
   }
+  // The tree is chosen by the optimiser; a comment sets the node constraints it keeps to. The
+  // section exists once the tree does, so the first comment has no stored result to drop: the
+  // search and everything built on the tree start again from S5.tree.
+  if (section === S5_STEER_KEY) return { effect: "rebuild", from: "S5.tree" };
   return undefined;
 }

@@ -17,6 +17,7 @@ const SECTION_LABELS: Readonly<Record<string, string>> = {
   "S9.faq": "Troubleshooting",
   "S5.gems": "Skill setup",
   "S6.notes": "Stage notes",
+  "S5.steer": "Passive tree",
 };
 
 /** Prefixes of the detail tasks of S9 (one per stage, gear tier, gear slot and crafting plan). */
@@ -44,7 +45,7 @@ export function sectionLabel(key: string): string {
 function statusOf(run: RunRecord, section: string, at: string): GuideCommentStatus {
   const stored = run.results[section];
   // Applied only when the run is done again: validation can still send the section back.
-  if (stored !== undefined && Date.parse(stored.at) > Date.parse(at)) {
+  if (stored !== undefined && Date.parse(stored.at) >= Date.parse(at)) {
     return run.phase === "done" ? "applied" : "working";
   }
   if (run.phase === "failed") return "failed";
@@ -82,6 +83,8 @@ export function buildCommentsView(guideId: string, run: RunRecord | undefined): 
   );
   // A section being redone has no stored result for a while; its comments keep it listed.
   const keys = new Set([
+    // The tree is chosen by the optimiser, so its section exists before the first comment.
+    ...(run.results["S5.tree"] === undefined && run.revisions.length === 0 ? [] : ["S5.steer"]),
     ...Object.keys(run.results).filter((k) => commentEffect(k) !== undefined),
     ...comments.filter((c) => c.status !== "failed").map((c) => c.section),
   ]);

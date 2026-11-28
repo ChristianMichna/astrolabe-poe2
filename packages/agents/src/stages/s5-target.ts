@@ -9,16 +9,17 @@ import {
   SkillSetup,
   TargetBuild,
 } from "@astrolabe/contracts/build";
-import type { DataRelease } from "@astrolabe/contracts/catalog";
-import type { JsonValue } from "@astrolabe/contracts/common";
+import type { DataRelease, PassiveNode } from "@astrolabe/contracts/catalog";
+import { PassiveNodeId, type JsonValue } from "@astrolabe/contracts/common";
 import type { StageConfig } from "../config.js";
 import { defineTask, type AnyTaskSpec, type PipelineContext, type PlanStep } from "../pipeline.js";
-import { S5_GEMS } from "../prompts.js";
+import { S5_GEMS, S5_STEER } from "../prompts.js";
 import { requestContext } from "./context.js";
 import { rejectedFindings } from "./s2-candidates.js";
 import { S3_KEY } from "./s3-evaluate.js";
 
 export const S5_GEMS_KEY = "S5.gems";
+export const S5_STEER_KEY = "S5.steer";
 export const S5_TREE_KEY = "S5.tree";
 export const S5_TARGET_KEY = "S5.target";
 
@@ -187,6 +188,138 @@ export function gemTask(
   });
 }
 
+/** What a player's comment on the tree turns into: constraints for the tree search. */
+export const TreeSteer = z.object({
+  requiredNodeIds: z.array(PassiveNodeId).max(30).default([]),
+  forbiddenNodeIds: z.array(PassiveNodeId).max(60).default([]),
+  priorityNodeIds: z.array(PassiveNodeId).max(60).default([]),
+  rationale: z.array(Rationale).min(1),
+});
+export type TreeSteer = z.infer<typeof TreeSteer>;
+
+/** S5 part 2a: only after a comment on the tree, Claude turns it into node constraints. */
+export function steerTask(
+  ctx: PipelineContext,
+  config: StageConfig,
+  chosen: ArchetypeCandidate,
+  setup: GemSetupSubmission,
+  playerComments: readonly string[],
+): AnyTaskSpec {
+  return defineTask<TreeSteer>({
+    key: S5_STEER_KEY,
+    type: "S5.steer",
+    promptVersion: config.promptVersion,
+    instructions: S5_STEER,
+    context: {
+      request: requestContext(ctx),
+      chosen,
+      skills: JSON.parse(JSON.stringify(setup.skills)) as JsonValue,
+      // Every comment so far: the constraints stay when the gems are chosen again.
+      playerComments: [...playerComments],
+    },
+    schema: TreeSteer,
+    allowedTools: ["catalog_search", "catalog_get"],
+    entities: (s) => [
+      ...s.requiredNodeIds.map((id, i) => ({
+        path: `/requiredNodeIds/${i}`,
+        ref: { kind: "passiveNode" as const, id },
+      })),
+      ...s.forbiddenNodeIds.map((id, i) => ({
+        path: `/forbiddenNodeIds/${i}`,
+        ref: { kind: "passiveNode" as const, id },
+      })),
+      ...s.priorityNodeIds.map((id, i) => ({
+        path: `/priorityNodeIds/${i}`,
+        ref: { kind: "passiveNode" as const, id },
+      })),
+      ...s.rationale.flatMap((r, i) =>
+        r.subject === undefined ? [] : [{ path: `/rationale/${i}/subject`, ref: r.subject }],
+      ),
+    ],
+    richText: (s) =>
+      s.rationale.map((r, i) => ({ path: `/rationale/${i}/reason`, text: r.reason })),
+    check: (s, checkCtx) => {
+      const findings: Finding[] = [];
+      const forbidden = new Set<string>(s.forbiddenNodeIds);
+      for (const [i, id] of s.requiredNodeIds.entries()) {
+        if (forbidden.has(id)) {
+          findings.push({
+            gate: "G3",
+            severity: "error",
+            code: "steer_conflict",
+            message: `Node ${id} is both required and forbidden.`,
+            path: `/requiredNodeIds/${i}`,
+            entity: { kind: "passiveNode", id },
+          });
+        }
+      }
+      const lists = [
+        ["requiredNodeIds", s.requiredNodeIds],
+        ["forbiddenNodeIds", s.forbiddenNodeIds],
+        ["priorityNodeIds", s.priorityNodeIds],
+      ] as const;
+      for (const [name, ids] of lists) {
+        for (const [i, id] of ids.entries()) {
+          const entry = checkCtx.catalog.get({ kind: "passiveNode", id });
+          const node = entry?.entity as PassiveNode | undefined;
+          // Unknown ids are the catalog gate's finding; here only nodes outside the main tree.
+          if (
+            node !== undefined &&
+            (node.ascendancyId !== undefined || node.classStartFor.length > 0)
+          ) {
+            findings.push({
+              gate: "G3",
+              severity: "error",
+              code: "steer_not_main_tree",
+              message: `Node ${id} is not a node of the main passive tree.`,
+              path: `/${name}/${i}`,
+              entity: { kind: "passiveNode", id },
+            });
+          }
+        }
+      }
+      const excluded = new Set(
+        checkCtx.run.request.exclusions.filter((e) => e.kind === "passiveNode").map((e) => e.id),
+      );
+      for (const [i, id] of s.requiredNodeIds.entries()) {
+        if (excluded.has(id)) {
+          findings.push({
+            gate: "G3",
+            severity: "error",
+            code: "steer_excluded",
+            message: `The player excluded node ${id}; it cannot be required.`,
+            path: `/requiredNodeIds/${i}`,
+            entity: { kind: "passiveNode", id },
+          });
+        }
+      }
+      const forbiddenSet = new Set<string>(s.forbiddenNodeIds);
+      for (const [i, id] of s.priorityNodeIds.entries()) {
+        if (forbiddenSet.has(id)) {
+          findings.push({
+            gate: "G3",
+            severity: "error",
+            code: "steer_conflict",
+            message: `Node ${id} is both prioritised and forbidden.`,
+            path: `/priorityNodeIds/${i}`,
+            entity: { kind: "passiveNode", id },
+          });
+        }
+      }
+      findings.push(
+        ...rejectedFindings(
+          checkCtx,
+          s.requiredNodeIds.map((id, i) => ({
+            path: `/requiredNodeIds/${i}`,
+            ref: { kind: "passiveNode" as const, id },
+          })),
+        ),
+      );
+      return Promise.resolve(findings);
+    },
+  });
+}
+
 /** S5 part 2: the endgame tree for the chosen skills, optimised by PoB as a background job. */
 export function treeJob(
   ctx: PipelineContext,
@@ -195,6 +328,7 @@ export function treeJob(
   chosen: ArchetypeCandidate,
   evaluation: ArchetypeEvaluation,
   setup: GemSetupSubmission,
+  steer?: TreeSteer,
 ): PlanStep {
   const target = ctx.target;
   if (target === undefined) {
@@ -220,6 +354,15 @@ export function treeJob(
         state: targetStart(evaluation.skeleton, setup, s5),
         passivePoints: s5.passivePoints,
         ...(s5.ascendancyPoints === undefined ? {} : { ascendancyPoints: s5.ascendancyPoints }),
+        ...(steer === undefined
+          ? {}
+          : {
+              steer: {
+                required: steer.requiredNodeIds,
+                forbidden: steer.forbiddenNodeIds,
+                priority: steer.priorityNodeIds,
+              },
+            }),
       });
       return JSON.parse(JSON.stringify(result)) as JsonValue;
     },
@@ -231,6 +374,7 @@ export function targetStep(
   chosen: ArchetypeCandidate,
   tree: { state: unknown; calcs: unknown },
   setup: GemSetupSubmission,
+  steer?: TreeSteer,
 ): PlanStep {
   return {
     kind: "server",
@@ -241,7 +385,7 @@ export function targetStep(
         candidateKey: chosen.key,
         state: tree.state,
         calcs: tree.calcs,
-        rationale: setup.rationale,
+        rationale: [...setup.rationale, ...(steer?.rationale ?? [])],
       });
       if (!parsed.success) {
         throw new Error("The stored S5 tree is not a valid target build", { cause: parsed.error });
