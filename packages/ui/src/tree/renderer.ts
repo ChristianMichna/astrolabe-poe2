@@ -150,7 +150,14 @@ export class TreeRenderer {
     }
     this.drawStatic();
     this.bindInput();
-    this.resizeObserver = new ResizeObserver(() => this.queueRedraw());
+    // Pixi's resizeTo follows window resizes only; entering full screen (a CSS class) changes the host
+    // size without one, which left the canvas at its old size while labels were placed for the new one.
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.destroyed) return;
+      const { clientWidth, clientHeight } = this.host;
+      if (clientWidth > 0 && clientHeight > 0) this.app.renderer.resize(clientWidth, clientHeight);
+      this.queueRedraw();
+    });
     this.resizeObserver.observe(host);
   }
 
