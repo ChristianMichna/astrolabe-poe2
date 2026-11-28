@@ -11000,6 +11000,12 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "icon": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!\\/)(?!.*\\.\\.)[\\w./-]+$",
+                    "description": "Path relative to the data release root"
+                  },
                   "itemClass": {
                     "type": "string",
                     "minLength": 1,
@@ -11103,6 +11109,12 @@
                   "baseName": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "icon": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!\\/)(?!.*\\.\\.)[\\w./-]+$",
+                    "description": "Path relative to the data release root"
                   },
                   "itemClass": {
                     "type": "string",
@@ -11209,6 +11221,12 @@
                     "baseName": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "icon": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^(?!\\/)(?!.*\\.\\.)[\\w./-]+$",
+                      "description": "Path relative to the data release root"
                     },
                     "itemClass": {
                       "type": "string",
