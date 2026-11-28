@@ -22,6 +22,16 @@ export const gameDataConfigSchema = z
     /** translation to export, as named by the dat tool */
     language: z.string().min(1),
     toolTimeoutMs: z.number().int().positive(),
+    /** Item art read next to the tables (F-30); absent: none. */
+    itemArt: z
+      .object({
+        /** only images below this path of the bundles are taken */
+        pathPrefix: z.string().min(1),
+        /** a run that fails on this share of the images or more fails the step */
+        maxFailedShare: z.number().min(0).max(1),
+      })
+      .strict()
+      .optional(),
     tables: z
       .array(
         z

@@ -89,6 +89,40 @@ async function writeGameData(levels: number[]): Promise<string> {
   });
 }
 
+describe("item art", () => {
+  it("sets the icon of a base item with art, copies the image and says what has none", async () => {
+    const snap = await writeSnapshot(rawSnapshot());
+    const first = (
+      JSON.parse(await readFile(join(snap, "raw", "itemBases.json"), "utf8")) as {
+        entities: Record<string, { name?: string }>;
+      }
+    ).entities;
+    const [id] = Object.keys(first);
+    const name = first[id as string]?.name ?? (id as string);
+    const art = await mkdtemp(join(tmpdir(), "ef-art-"));
+    await writeFile(join(art, "Fixture_Base.png"), "png");
+    await writeFile(
+      join(art, "index.json"),
+      JSON.stringify({
+        format: "astrolabe-item-art/1",
+        patch: { version: "9.9.9" },
+        tool: { name: "pathofexile-dat", version: "1.0.0" },
+        createdAt: NOW.toISOString(),
+        items: { [name]: "Fixture_Base.png" },
+        failed: [],
+      }),
+    );
+    const out = join(await mkdtemp(join(tmpdir(), "ef-cat-")), "catalog");
+    await buildCatalog(snap, out, config, NOW, { itemArtDir: art });
+    const shard = CatalogShard.parse(
+      JSON.parse(await readFile(join(out, "baseItem.json"), "utf8")),
+    );
+    const icons = shard.entities.map((e) => (e as { icon?: string }).icon).filter(Boolean);
+    expect(icons).toEqual(["assets/items/Fixture_Base.png"]);
+    expect(await readFile(join(out, "assets/items/Fixture_Base.png"), "utf8")).toBe("png");
+  });
+});
+
 describe("essences without game data", () => {
   it("leaves actions out and says so", async () => {
     const snap = await writeSnapshot(rawSnapshot());

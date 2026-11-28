@@ -4,7 +4,14 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { loadPobSources } from "./config.ts";
 import { loadGameDataConfig } from "./gamedata/config.ts";
-import { exportGameData, fetchSchemaRecord, resolveDatTool } from "./gamedata/export.ts";
+import {
+  exportGameData,
+  fetchSchemaRecord,
+  readGameDataManifest,
+  readGameDataTable,
+  resolveDatTool,
+} from "./gamedata/export.ts";
+import { exportItemArt, resolveFileRunner } from "./gamedata/item-art.ts";
 import { queryPatchServer } from "./gamedata/patch.ts";
 import { summarizeCatalogDiff, writeCatalogDiff } from "./diff/catalog-diff.ts";
 import { diffSnapshots, summarizeDiff } from "./diff/snapshot-diff.ts";
@@ -34,10 +41,14 @@ const USAGE = `astrolabe-data <command>
       Map every mod's display lines to stat ids and report what stays unresolved.
 
   catalog <snapshotDir> --out <dir> [--config config/data-pipeline/normalize.json]
-          [--game-data <dir>]
+          [--game-data <dir>] [--item-art <dir>]
       Normalise a snapshot to the catalog contract, validate it and write the
       release files (manifest.json, one shard per kind, findings.json).
 
+  item-art <snapshot-dir> --game-data <dir> --out <dir>
+           [--config config/data-pipeline/game-data.json]
+      Read the inventory image of each base item of the snapshot from the patch the
+      game-data step read (CI only); writes <out>/index.json and the PNG files.
   gamedata --out <dir> [--config config/data-pipeline/game-data.json]
       Read the configured game-data tables (currencies, essences, omens) of the
       current patch from the update servers and write them with a manifest.
@@ -135,6 +146,7 @@ async function main(argv: string[]): Promise<void> {
         out: { type: "string" },
         config: { type: "string", default: "config/data-pipeline/normalize.json" },
         "game-data": { type: "string" },
+        "item-art": { type: "string" },
       },
       allowPositionals: true,
       strict: true,
@@ -143,12 +155,16 @@ async function main(argv: string[]): Promise<void> {
     if (!dir || positionals.length !== 1) fail(USAGE);
     const out = values.out ?? fail("--out is required");
     const gameData = values["game-data"];
+    const itemArt = values["item-art"];
     const { manifest, warnings, summary } = await buildCatalog(
       dir,
       out,
       await loadNormalizeConfig(resolve(values.config)),
       new Date(),
-      gameData === undefined ? {} : { gameDataDir: resolve(gameData) },
+      {
+        ...(gameData === undefined ? {} : { gameDataDir: resolve(gameData) }),
+        ...(itemArt === undefined ? {} : { itemArtDir: resolve(itemArt) }),
+      },
     );
     console.warn(
       `catalog ${manifest.release.id}: 0 errors, ${String(warnings.length)} warnings (findings.json)`,
@@ -182,6 +198,58 @@ async function main(argv: string[]): Promise<void> {
     console.warn(`game data of patch ${manifest.patch.version} (${tool.name} ${tool.version})`);
     for (const t of manifest.tables) console.warn(`  ${t.name}: ${String(t.count)} rows`);
     for (const m of manifest.missing) console.warn(`  missing: ${m.name} (${m.reason})`);
+    return;
+  }
+  if (command === "item-art") {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      options: {
+        "game-data": { type: "string" },
+        out: { type: "string" },
+        config: { type: "string", default: "config/data-pipeline/game-data.json" },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    const [dir] = positionals;
+    if (!dir || positionals.length !== 1) fail(USAGE);
+    const out = values.out ?? fail("--out is required");
+    const gameDataDir = resolve(values["game-data"] ?? fail("--game-data is required"));
+    const config = await loadGameDataConfig(resolve(values.config));
+    if (config.itemArt === undefined) fail("the game-data config has no itemArt block");
+    const snap = await readManifest(dir);
+    const bases = await readShard(dir, snap, "itemBases");
+    const wanted = new Set(
+      Object.entries(bases).map(([id, b]) => {
+        const name = (b as { name?: unknown } | null)?.name;
+        return typeof name === "string" && name !== "" ? name : id;
+      }),
+    );
+    const manifest = await readGameDataManifest(gameDataDir);
+    const [baseItems, visuals, files] = await Promise.all([
+      readGameDataTable(gameDataDir, manifest, "BaseItemTypes"),
+      readGameDataTable(gameDataDir, manifest, "ItemVisualIdentity"),
+      resolveFileRunner(),
+    ]);
+    const index = await exportItemArt({
+      config: config.itemArt,
+      patch: { version: manifest.patch.version, url: manifest.patch.url },
+      tool: files,
+      baseItems,
+      visuals,
+      wanted,
+      outDir: out,
+      timeoutMs: config.toolTimeoutMs,
+    });
+    const have = Object.keys(index.items).length;
+    console.warn(
+      `item art of patch ${index.patch.version}: ${String(have)} of ${String(wanted.size)} base items`,
+    );
+    for (const f of index.failed.slice(0, 20)) console.warn(`  no image: ${f.name} (${f.reason})`);
+    if (index.failed.length > config.itemArt.maxFailedShare * wanted.size)
+      fail(
+        `${String(index.failed.length)} of ${String(wanted.size)} base items have no image, more than the allowed share ${String(config.itemArt.maxFailedShare)}`,
+      );
     return;
   }
   if (command === "patch-watch") {
