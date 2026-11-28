@@ -257,6 +257,15 @@ export const CraftingPlan = z.object({
   }),
   steps: z.array(CraftStep).min(1),
   expectedTotal: MeasuredPrice,
+  /**
+   * Chance that one attempt of the whole strategy reaches the goal mods (the simulator's
+   * `successChance`). The step chances only say how often a step's own check passes, which is
+   * `1` for a step without a check, so this is the number a player plans with. Absent in
+   * guides written before it existed.
+   */
+  successChance: MeasuredChance.optional(),
+  /** Attempts of the whole strategy until one success; absent in older guides. */
+  expectedAttempts: MeasuredCount.optional(),
   fallback: RichText.optional(),
   /** Detailed prose of the craft (S9); absent in guides written before it existed. */
   guide: CraftingGuide.optional(),
