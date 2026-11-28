@@ -31,13 +31,24 @@ export const itemArtIndexSchema = z
     createdAt: z.iso.datetime(),
     /** base item name -> file path relative to the art directory */
     items: z.record(z.string().min(1), z.string().min(1)),
-    /** base items whose art is not in the patch or could not be converted */
-    failed: z.array(z.object({ name: z.string().min(1), reason: z.string().min(1) }).strict()),
+    /** unique item name -> file path relative to the art directory */
+    uniques: z.record(z.string().min(1), z.string().min(1)),
+    /** items whose art is not in the patch or could not be converted */
+    failed: z.array(
+      z
+        .object({
+          kind: z.enum(["baseItem", "uniqueItem"]),
+          name: z.string().min(1),
+          reason: z.string().min(1),
+        })
+        .strict(),
+    ),
   })
   .strict();
 export type ItemArtIndex = z.infer<typeof itemArtIndexSchema>;
 
 export interface ArtJob {
+  kind: "baseItem" | "uniqueItem";
   name: string;
   /** path of the image inside the bundles */
   source: string;
@@ -48,7 +59,7 @@ export interface ArtJob {
 export interface ArtPlan {
   jobs: ArtJob[];
   /** wanted names without art */
-  missing: { name: string; reason: string }[];
+  missing: { kind: ArtJob["kind"]; name: string; reason: string }[];
 }
 
 const NAME_COLUMN = "Name";
@@ -81,21 +92,82 @@ export function planItemArt(
   for (const name of [...wanted].sort()) {
     const row = byName.get(name);
     if (!row) {
-      missing.push({ name, reason: "no such base item in the game data" });
+      missing.push({ kind: "baseItem", name, reason: "no such base item in the game data" });
       continue;
     }
     const ref = row[VISUAL_COLUMN];
     const visual = typeof ref === "number" ? visuals[ref] : undefined;
     const source = visual?.[IMAGE_COLUMN];
     if (typeof source !== "string" || source === "") {
-      missing.push({ name, reason: "the base item has no image in the game data" });
+      missing.push({
+        kind: "baseItem",
+        name,
+        reason: "the base item has no image in the game data",
+      });
       continue;
     }
     if (!source.startsWith(config.pathPrefix) || !source.toLowerCase().endsWith(".dds")) {
-      missing.push({ name, reason: `image ${source} is outside ${config.pathPrefix}` });
+      missing.push({
+        kind: "baseItem",
+        name,
+        reason: `image ${source} is outside ${config.pathPrefix}`,
+      });
       continue;
     }
-    jobs.push({ name, source, file: fileNameOf(source, config.pathPrefix) });
+    jobs.push({ kind: "baseItem", name, source, file: fileNameOf(source, config.pathPrefix) });
+  }
+  return { jobs, missing };
+}
+
+export interface UniqueArtTables {
+  /** `UniqueStashLayout`: a unique's name (`WordsKey`) and its image (`ItemVisualIdentityKey`) */
+  layout: readonly GameDataRow[];
+  /** `Words`: the names the layout refers to */
+  words: readonly GameDataRow[];
+  /** titles of the catalog's unique items */
+  wanted: ReadonlySet<string>;
+}
+
+/**
+ * The image of each wanted unique: the layout row whose name is the title, skipping the
+ * alternate-art rows. The word table holds the name in `Text` or `Text2`; either may match.
+ */
+export function planUniqueArt(
+  tables: UniqueArtTables,
+  visuals: readonly GameDataRow[],
+  config: NonNullable<GameDataConfig["itemArt"]>,
+): ArtPlan {
+  const rows = new Map<string, GameDataRow>();
+  for (const row of tables.layout) {
+    if (row["IsAlternateArt"] === true) continue;
+    const word = typeof row["WordsKey"] === "number" ? tables.words[row["WordsKey"]] : undefined;
+    for (const column of ["Text", "Text2"]) {
+      const name = word?.[column];
+      if (typeof name === "string" && tables.wanted.has(name) && !rows.has(name))
+        rows.set(name, row);
+    }
+  }
+  const jobs: ArtJob[] = [];
+  const missing: ArtPlan["missing"] = [];
+  for (const name of [...tables.wanted].sort()) {
+    const row = rows.get(name);
+    const ref = row?.["ItemVisualIdentityKey"];
+    const source = typeof ref === "number" ? visuals[ref]?.[IMAGE_COLUMN] : undefined;
+    if (row === undefined || typeof source !== "string" || source === "") {
+      missing.push({
+        kind: "uniqueItem",
+        name,
+        reason: "no image for this unique in the game data",
+      });
+    } else if (!source.startsWith(config.pathPrefix) || !source.toLowerCase().endsWith(".dds")) {
+      missing.push({
+        kind: "uniqueItem",
+        name,
+        reason: `image ${source} is outside ${config.pathPrefix}`,
+      });
+    } else {
+      jobs.push({ kind: "uniqueItem", name, source, file: fileNameOf(source, config.pathPrefix) });
+    }
   }
   return { jobs, missing };
 }
@@ -144,6 +216,7 @@ export interface ItemArtOptions {
   baseItems: readonly GameDataRow[];
   visuals: readonly GameDataRow[];
   wanted: ReadonlySet<string>;
+  uniques?: UniqueArtTables;
   outDir: string;
   timeoutMs: number;
   now?: Date;
@@ -180,7 +253,14 @@ async function readImages(
 }
 
 export async function exportItemArt(opts: ItemArtOptions): Promise<ItemArtIndex> {
-  const plan = planItemArt(opts.baseItems, opts.visuals, opts.wanted, opts.config);
+  const basePlan = planItemArt(opts.baseItems, opts.visuals, opts.wanted, opts.config);
+  const uniquePlan: ArtPlan = opts.uniques
+    ? planUniqueArt(opts.uniques, opts.visuals, opts.config)
+    : { jobs: [], missing: [] };
+  const plan: ArtPlan = {
+    jobs: [...basePlan.jobs, ...uniquePlan.jobs],
+    missing: [...basePlan.missing, ...uniquePlan.missing],
+  };
   const out = resolve(opts.outDir);
   const sources = [...new Set(plan.jobs.map((j) => j.source))];
   const workDir = await mkdtemp(join(tmpdir(), "astrolabe-itemart-"));
@@ -194,7 +274,7 @@ export async function exportItemArt(opts: ItemArtOptions): Promise<ItemArtIndex>
       await readImages(batch, opts, workDir, failed);
       for (const source of batch) {
         if (before.has(source) || failed.has(source)) continue;
-        const file = plan.jobs.find((j) => j.source === source)?.file as string;
+        const file = (plan.jobs.find((j) => j.source === source) as ArtJob).file;
         try {
           await copyFile(join(workDir, "files", toolOutputName(source)), join(out, file));
         } catch (cause) {
@@ -208,11 +288,12 @@ export async function exportItemArt(opts: ItemArtOptions): Promise<ItemArtIndex>
     await rm(workDir, { recursive: true, force: true });
   }
   const items: Record<string, string> = {};
+  const uniques: Record<string, string> = {};
   const failures = [...plan.missing];
   for (const job of plan.jobs) {
     const reason = failed.get(job.source);
-    if (reason !== undefined) failures.push({ name: job.name, reason });
-    else if (done.has(job.source)) items[job.name] = job.file;
+    if (reason !== undefined) failures.push({ kind: job.kind, name: job.name, reason });
+    else if (done.has(job.source)) (job.kind === "baseItem" ? items : uniques)[job.name] = job.file;
   }
   const index = itemArtIndexSchema.parse({
     format: ITEM_ART_FORMAT,
@@ -220,6 +301,7 @@ export async function exportItemArt(opts: ItemArtOptions): Promise<ItemArtIndex>
     tool: { name: TOOL_NAME, version: opts.tool.version },
     createdAt: (opts.now ?? new Date()).toISOString(),
     items,
+    uniques,
     failed: failures,
   });
   await writeFile(join(out, INDEX_FILE), JSON.stringify(index, null, 2) + "\n");

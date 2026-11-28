@@ -62,6 +62,14 @@
     {
       "name": "ItemVisualIdentity",
       "columns": ["Id", "DDSFile"]
+    },
+    {
+      "name": "UniqueStashLayout",
+      "columns": ["WordsKey", "ItemVisualIdentityKey", "IsAlternateArt"]
+    },
+    {
+      "name": "Words",
+      "columns": ["Text", "Text2"]
     }
   ],
   "itemArt": {

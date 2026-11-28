@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   exportItemArt,
   planItemArt,
+  planUniqueArt,
   readItemArtIndex,
   toolOutputName,
   type FileRunner,
@@ -33,11 +34,13 @@ describe("planItemArt", () => {
     );
     expect(plan.jobs).toEqual([
       {
+        kind: "baseItem",
         name: "Fixture Boots",
         source: "Art/2DItems/Armours/Boots/FixtureBoots.dds",
         file: "Armours_Boots_FixtureBoots.png",
       },
       {
+        kind: "baseItem",
         name: "Fixture Helm",
         source: "Art/2DItems/Armours/Helmets/FixtureHelm.dds",
         file: "Armours_Helmets_FixtureHelm.png",
@@ -48,6 +51,29 @@ describe("planItemArt", () => {
       "Fixture Ring",
       "Unknown",
     ]);
+  });
+});
+
+describe("planUniqueArt", () => {
+  const words = [
+    { _index: 0, Text: "fixture helm of doom", Text2: "Doom Helm" },
+    { _index: 1, Text: "x", Text2: "Alt Helm" },
+  ];
+  const layout = [
+    { _index: 0, WordsKey: 0, ItemVisualIdentityKey: 0, IsAlternateArt: false },
+    { _index: 1, WordsKey: 1, ItemVisualIdentityKey: 1, IsAlternateArt: true },
+  ];
+
+  it("takes the image of the regular layout row, by either name column", () => {
+    const plan = planUniqueArt(
+      { layout, words, wanted: new Set(["Doom Helm", "Alt Helm", "Nameless"]) },
+      visuals,
+      config,
+    );
+    expect(plan.jobs.map((j) => [j.kind, j.name, j.file])).toEqual([
+      ["uniqueItem", "Doom Helm", "Armours_Helmets_FixtureHelm.png"],
+    ]);
+    expect(plan.missing.map((m) => m.name)).toEqual(["Alt Helm", "Nameless"]);
   });
 });
 
@@ -77,7 +103,11 @@ describe("exportItemArt", () => {
     });
     expect(index.items).toEqual({ "Fixture Helm": "Armours_Helmets_FixtureHelm.png" });
     expect(index.failed).toEqual([
-      { name: "Fixture Boots", reason: expect.stringContaining("imagemagick") as string },
+      {
+        kind: "baseItem",
+        name: "Fixture Boots",
+        reason: expect.stringContaining("imagemagick") as string,
+      },
     ]);
     expect(await readFile(join(outDir, "Armours_Helmets_FixtureHelm.png"), "utf8")).toBe("png");
     expect(await readItemArtIndex(outDir)).toEqual(index);

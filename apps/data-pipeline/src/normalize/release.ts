@@ -144,11 +144,17 @@ export async function buildCatalog(
       artFiles.push(file);
       return { ...b, icon: `${ITEM_ART_RELEASE_DIR}/${file}` };
     });
-    const without = norm.entities.baseItem.length - artFiles.length;
+    const withIcon = artFiles.length;
+    norm.entities.uniqueItem = norm.entities.uniqueItem.map((u) => {
+      const file = art.uniques[String(u.name)];
+      if (file === undefined) return u;
+      artFiles.push(file);
+      return { ...u, icon: `${ITEM_ART_RELEASE_DIR}/${file}` };
+    });
     itemArtFindings.push({
       kind: "itemArt",
       id: "all",
-      message: `${String(artFiles.length)} base items have an icon, ${String(without)} have none (${String(art.failed.length)} listed in the item-art index)`,
+      message: `${String(withIcon)} of ${String(norm.entities.baseItem.length)} base items and ${String(artFiles.length - withIcon)} of ${String(norm.entities.uniqueItem.length)} uniques have an icon (${String(art.failed.length)} listed in the item-art index)`,
     });
   }
   const essenceFindings: Finding[] = [];

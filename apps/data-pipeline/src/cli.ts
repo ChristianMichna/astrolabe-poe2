@@ -226,9 +226,18 @@ async function main(argv: string[]): Promise<void> {
       }),
     );
     const manifest = await readGameDataManifest(gameDataDir);
-    const [baseItems, visuals, files] = await Promise.all([
+    const uniques = await readShard(dir, snap, "uniques");
+    const uniqueTitles = new Set(
+      Object.entries(uniques).flatMap(([, u]) => {
+        const title = (u as { title?: unknown } | null)?.title;
+        return typeof title === "string" && title !== "" ? [title] : [];
+      }),
+    );
+    const [baseItems, visuals, layout, words, files] = await Promise.all([
       readGameDataTable(gameDataDir, manifest, "BaseItemTypes"),
       readGameDataTable(gameDataDir, manifest, "ItemVisualIdentity"),
+      readGameDataTable(gameDataDir, manifest, "UniqueStashLayout"),
+      readGameDataTable(gameDataDir, manifest, "Words"),
       resolveFileRunner(),
     ]);
     const index = await exportItemArt({
@@ -238,17 +247,20 @@ async function main(argv: string[]): Promise<void> {
       baseItems,
       visuals,
       wanted,
+      uniques: { layout, words, wanted: uniqueTitles },
       outDir: out,
       timeoutMs: config.toolTimeoutMs,
     });
     const have = Object.keys(index.items).length;
+    const haveUnique = Object.keys(index.uniques).length;
     console.warn(
-      `item art of patch ${index.patch.version}: ${String(have)} of ${String(wanted.size)} base items`,
+      `item art of patch ${index.patch.version}: ${String(have)} of ${String(wanted.size)} base items, ${String(haveUnique)} of ${String(uniqueTitles.size)} uniques`,
     );
-    for (const f of index.failed.slice(0, 20)) console.warn(`  no image: ${f.name} (${f.reason})`);
-    if (index.failed.length > config.itemArt.maxFailedShare * wanted.size)
+    for (const f of index.failed.slice(0, 20))
+      console.warn(`  no image: ${f.kind} ${f.name} (${f.reason})`);
+    if (index.failed.length > config.itemArt.maxFailedShare * (wanted.size + uniqueTitles.size))
       fail(
-        `${String(index.failed.length)} of ${String(wanted.size)} base items have no image, more than the allowed share ${String(config.itemArt.maxFailedShare)}`,
+        `${String(index.failed.length)} of ${String(wanted.size + uniqueTitles.size)} items have no image, more than the allowed share ${String(config.itemArt.maxFailedShare)}`,
       );
     return;
   }

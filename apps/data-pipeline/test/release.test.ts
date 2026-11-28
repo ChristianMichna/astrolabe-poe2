@@ -109,6 +109,7 @@ describe("item art", () => {
         tool: { name: "pathofexile-dat", version: "1.0.0" },
         createdAt: NOW.toISOString(),
         items: { [name]: "Fixture_Base.png" },
+        uniques: {},
         failed: [],
       }),
     );
