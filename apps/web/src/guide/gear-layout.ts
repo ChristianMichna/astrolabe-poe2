@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SLOT_ICON_IDS } from "../views/SlotIcon";
 import raw from "../../../../config/web/gear-layout.json";
 
 /** Where each slot sits on the paper doll (config/web/gear-layout.json), checked at start-up. */
@@ -13,11 +14,17 @@ const GearLayoutConfig = z
   .object({
     columns: z.number().int().min(1),
     slots: z.record(z.string().min(1), Area),
-    glyphs: z.record(z.string().min(1), z.string().min(1)),
+    /** Icon id per slot name (see SlotIcon); slots without an entry get a neutral icon. */
+    icons: z.record(z.string().min(1), z.string().min(1)),
     /** Slots that take the same place because a character wears only one of them (e.g. two-hand vs off-hand). */
     alternatives: z.array(z.array(z.string().min(1)).min(2)).default([]),
   })
   .superRefine((cfg, ctx) => {
+    for (const [slot, icon] of Object.entries(cfg.icons)) {
+      if (!SLOT_ICON_IDS.includes(icon)) {
+        ctx.addIssue({ code: "custom", message: `${slot} names the unknown icon ${icon}` });
+      }
+    }
     const seen = new Map<string, string>();
     const same = (a: string, b: string) =>
       cfg.alternatives.some((g) => g.includes(a) && g.includes(b));
@@ -34,11 +41,6 @@ const GearLayoutConfig = z
           }
           seen.set(key, slot);
         }
-      }
-    }
-    for (const glyphSlot of Object.keys(cfg.glyphs)) {
-      if (cfg.slots[glyphSlot] === undefined) {
-        ctx.addIssue({ code: "custom", message: `glyph for unknown slot ${glyphSlot}` });
       }
     }
   });
