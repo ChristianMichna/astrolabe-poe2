@@ -4,6 +4,7 @@ import {
   type GuideCommentStatus,
   type GuideSectionInfo,
 } from "@astrolabe/contracts/guide";
+import { recalculatesOnComment } from "@astrolabe/agents";
 import type { RunRecord } from "../engine/run-record.js";
 
 /** Names of the prose sections Claude writes (stage S9); other keys are named from their slug. */
@@ -22,6 +23,8 @@ const DETAIL_PREFIXES: readonly (readonly [string, string])[] = [
   ["S9.tier-", "Gear tier"],
   ["S9.slot-", "Gear slot"],
   ["S9.craft-", "Crafting plan"],
+  // A crafting strategy: Claude plans it again and the simulator measures it again.
+  ["S8.craft-", "Crafting strategy"],
 ];
 
 /** Readable name of a section key; the slug words stay as the pipeline wrote them. */
@@ -73,11 +76,11 @@ export function buildCommentsView(guideId: string, run: RunRecord | undefined): 
   );
   // A section being redone has no stored result for a while; its comments keep it listed.
   const keys = new Set([
-    ...Object.keys(run.results).filter((k) => k.startsWith("S9.")),
+    ...Object.keys(run.results).filter((k) => k.startsWith("S9.") || k.startsWith("S8.craft-")),
     ...comments.map((c) => c.section),
   ]);
   const sections: GuideSectionInfo[] = [...keys]
     .sort()
-    .map((key) => ({ key, label: sectionLabel(key) }));
+    .map((key) => ({ key, label: sectionLabel(key), recalculates: recalculatesOnComment(key) }));
   return GuideCommentsView.parse({ guideId, runId: run.runId, sections, comments });
 }

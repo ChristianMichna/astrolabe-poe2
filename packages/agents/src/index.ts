@@ -56,3 +56,6 @@ export { GuideSpec, itemsFor, specRubricGaps, withGuideSpec } from "./guide-spec
 export { QualityRubric } from "./quality/rubric.js";
 export { rubricFindings } from "./stages/s10-quality.js";
 export type { GuideDraft } from "./stages/s10-validate.js";
+export { commentDependents, recalculatesOnComment } from "./section-dependents.js";
+export { craftDetailKey, slotDetailKey, stageDetailKey } from "./stages/s9-detail.js";
+export { slotSlug } from "./stages/s8-craft.js";

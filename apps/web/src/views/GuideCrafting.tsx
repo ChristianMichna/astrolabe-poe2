@@ -1,5 +1,6 @@
 import type { CraftOnFail, CraftStep, CraftingPlan } from "@astrolabe/contracts/build";
-import type { GuideView } from "@astrolabe/contracts/guide";
+import { craftTextSectionKey, type GuideView } from "@astrolabe/contracts/guide";
+import { SectionComments } from "./SectionComments";
 import { Callout, Panel, StatGrid, StatValue } from "@astrolabe/ui";
 import type { ValueState } from "@astrolabe/ui";
 import { measuredState } from "../guide/measured";
@@ -151,6 +152,12 @@ function Plan({ plan, view }: { plan: CraftingPlan; view: GuideView }) {
           <RichTextView text={plan.fallback} view={view} />
         </p>
       )}
+      <SectionComments sectionKey={craftTextSectionKey(plan.key)} label={`${plan.slot} text`} />
+      <SectionComments
+        sectionKey={plan.key}
+        label={`${plan.slot} strategy`}
+        hint="Claude plans the crafting again and the simulator and prices measure it again."
+      />
     </Panel>
   );
 }

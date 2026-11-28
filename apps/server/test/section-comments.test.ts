@@ -215,3 +215,118 @@ describe("several comments on one section", () => {
     expect(store.findGuide(runId)).toMatchObject({ metadata: { revision: 2 } });
   });
 });
+
+/** A crafting strategy (S8), its priced plan (S8.plan) and the text about it (S9.craft-…). */
+const craftPipeline: Pipeline = {
+  id: "craft-comment-test",
+  plan: (ctx) => {
+    const task = (key: string) =>
+      ({
+        kind: "task",
+        spec: defineTask<{ text: string }>({
+          key,
+          type: key,
+          instructions: `Write ${key}.`,
+          promptVersion: "t",
+          context: {},
+          schema: z.object({ text: z.string() }),
+          allowedTools: [],
+        }),
+      }) as const;
+    const craft = "S8.craft-a-ring";
+    if (ctx.result(craft) === undefined) return task(craft);
+    if (ctx.result("S8.plan") === undefined) {
+      return {
+        kind: "server",
+        key: "S8.plan",
+        type: "S8.plan",
+        run: async () => ({ priced: ctx.result(craft) ?? null }),
+      };
+    }
+    if (ctx.result("S9.summary") === undefined) return task("S9.summary");
+    if (ctx.result("S9.craft-s8-craft-a-ring") === undefined)
+      return task("S9.craft-s8-craft-a-ring");
+    if (ctx.result("S10.report") === undefined) {
+      return { kind: "server", key: "S10.report", type: "S10", run: async () => ({ ok: true }) };
+    }
+    if (ctx.result("S11.guide") === undefined) {
+      return {
+        kind: "server",
+        key: "S11.guide",
+        type: "S11",
+        run: async () => ({
+          metadata: { guideId: ctx.run.runId, revision: 0 },
+          plan: ctx.result("S8.plan") ?? null,
+        }),
+      };
+    }
+    return { kind: "done" };
+  },
+};
+
+describe("comments on a crafting strategy", () => {
+  it("plans the strategy again and measures the plan and its text again, not the other sections", async () => {
+    const store = new RunStore(":memory:");
+    const engine = new ForgeEngine({
+      store,
+      catalog: fixtureCatalog(),
+      calc: new PersistedCalc(new CalcFake({ dataReleaseId: RELEASE }), store),
+      config: CONFIG,
+      pipelines: [craftPipeline],
+      calcProfiles: CONFIG.pipelines.poc.calcProfiles,
+    });
+    const { runId, sessionCode } = await engine.createRun(REQUEST, "craft-comment-test");
+    let step: ForgeStep = (await engine.attach(sessionCode)).next;
+    for (const text of ["strategy 1", "summary", "craft text"]) {
+      const t = task(step);
+      const out = await engine.submit({ runId, taskId: t.taskId, attempt: 1, payload: { text } });
+      if (out.result !== "accepted") throw new Error("rejected");
+      step = out.next;
+    }
+    expect(step.kind).toBe("done");
+
+    await engine.intervene(runId, {
+      kind: "comment",
+      commentId: "k1",
+      section: "S8.craft-a-ring",
+      text: "Cheaper, no exalts.",
+    });
+    const view = buildCommentsView(runId, store.findRunByGuideId(runId));
+    expect(view.sections.find((s) => s.key === "S8.craft-a-ring")).toMatchObject({
+      recalculates: true,
+    });
+    const first = task(await engine.next(runId));
+    expect(first.type).toBe("S8.craft-a-ring");
+    expect(first.feedback).toEqual([
+      expect.objectContaining({ commentId: "k1", previous: { text: "strategy 1" } }),
+    ]);
+    let out = await engine.submit({
+      runId,
+      taskId: first.taskId,
+      attempt: 1,
+      payload: { text: "strategy 2" },
+    });
+    if (out.result !== "accepted") throw new Error("rejected");
+    // The plan is measured again on the server, the summary is kept, the craft text is asked again.
+    const next = task(out.next);
+    expect(next.type).toBe("S9.craft-s8-craft-a-ring");
+    out = await engine.submit({ runId, taskId: next.taskId, attempt: 1, payload: { text: "t2" } });
+    expect(out.next.kind).toBe("done");
+    expect(store.findGuide(runId)).toMatchObject({
+      metadata: { revision: 1 },
+      plan: { priced: { text: "strategy 2" } },
+    });
+  });
+
+  it("refuses a strategy the guide does not have", async () => {
+    const { engine, runId } = await finishedRun();
+    await expect(
+      engine.intervene(runId, {
+        kind: "comment",
+        commentId: "z",
+        section: "S8.craft-nothing",
+        text: "ok",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_intervention" });
+  });
+});

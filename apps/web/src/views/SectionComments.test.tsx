@@ -93,4 +93,22 @@ describe("section comments", () => {
     page();
     expect(await screen.findByText("No run.")).toBeTruthy();
   });
+
+  it("says that a crafting strategy comment is measured again", async () => {
+    stubServer({
+      ...empty,
+      sections: [{ key: "S8.craft-a-ring", label: "Crafting strategy", recalculates: true }],
+    });
+    render(
+      <GuideCommentsProvider guideId="g1">
+        <SectionComments
+          sectionKey="S8.craft-a-ring"
+          label="Ring strategy"
+          hint="The simulator measures it again."
+        />
+      </GuideCommentsProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /Comment on Ring strategy/ }));
+    expect(screen.getByText("The simulator measures it again.")).toBeTruthy();
+  });
 });

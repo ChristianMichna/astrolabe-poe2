@@ -4,7 +4,13 @@ import { rarityOf, toItemView } from "../guide/gear-item";
 import { ItemTooltip, Panel, Tabs } from "@astrolabe/ui";
 import { Bullets, EntityName } from "./GuideText";
 import { RichTextView } from "../guide/RichTextView";
-import type { GuideGearEntry, GuideItemCard, GuideView } from "@astrolabe/contracts/guide";
+import {
+  slotSectionKey,
+  type GuideGearEntry,
+  type GuideItemCard,
+  type GuideView,
+} from "@astrolabe/contracts/guide";
+import { SectionComments } from "./SectionComments";
 
 /*
  * The gear plan of a guide: one tab per budget tier, one card per slot. Names and modifier texts
@@ -95,6 +101,10 @@ function Slot({ entry, view }: { entry: GuideGearEntry; view: GuideView }) {
           )}
         </details>
       ) : null}
+      <SectionComments
+        sectionKey={slotSectionKey(entry.budgetTier, entry.slot)}
+        label={`${entry.slot} notes`}
+      />
     </section>
   );
 }

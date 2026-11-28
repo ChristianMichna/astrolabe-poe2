@@ -9,15 +9,20 @@ import { IsoDateTime } from "../common/version.js";
  */
 
 /**
- * Key of one task result the guide is made of, e.g. "S9.mechanics" or "S9.stage-act-1". Keys are
+ * Key of one task result the guide is made of: a written section ("S9.mechanics", "S9.stage-act-1")
+ * or a crafting strategy ("S8.craft-<tier>-<slot>"), which the simulator measures again. Keys are
  * the pipeline's own; the list of keys a guide can be commented on comes from the server
- * (`GuideCommentsView.sections`), the app never builds them itself.
+ * (`GuideCommentsView.sections`); the app finds a part by the key helpers below, which a server
+ * test holds equal to the pipeline's keys.
  */
 export const GuideSectionKey = z
   .string()
   .min(3)
   .max(120)
-  .regex(/^S9\.[a-z0-9][a-z0-9.-]*$/, "expected a guide section key like S9.mechanics");
+  .regex(
+    /^(?:S9\.|S8\.craft-)[a-z0-9][a-z0-9.-]*$/,
+    "expected a guide section key like S9.mechanics or S8.craft-tier-slot",
+  );
 export type GuideSectionKey = z.infer<typeof GuideSectionKey>;
 
 /** Longest comment text; the text goes to Claude as an instruction for one section. */
@@ -53,6 +58,11 @@ export const GuideSectionInfo = z.object({
   key: GuideSectionKey,
   /** Name for the comment button and list, in the app's language. */
   label: z.string().min(1),
+  /**
+   * The comment makes Claude plan the part again and the engine measures it again (crafting
+   * strategies: simulator and prices), not only rewrite text.
+   */
+  recalculates: z.boolean().default(false),
 });
 export type GuideSectionInfo = z.infer<typeof GuideSectionInfo>;
 
@@ -69,3 +79,24 @@ export const GuideCommentsView = z.object({
   comments: z.array(GuideComment),
 });
 export type GuideCommentsView = z.infer<typeof GuideCommentsView>;
+
+/**
+ * Lower case, digits and dashes: how the pipeline turns an id (stage, tier, slot, plan) into a
+ * part of a result key. A test in apps/server holds this equal to the pipeline's own keys.
+ */
+export function sectionSlug(id: string): string {
+  return id
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Key of the text written for a progression stage. */
+export const stageSectionKey = (stageKey: string): string => `S9.stage-${sectionSlug(stageKey)}`;
+
+/** Key of the text written for a gear slot of a budget tier. */
+export const slotSectionKey = (tier: string, slot: string): string =>
+  `S9.slot-${sectionSlug(tier)}-${sectionSlug(slot)}`;
+
+/** Key of the text written for a crafting plan (`CraftingPlan.key`). */
+export const craftTextSectionKey = (planKey: string): string => `S9.craft-${sectionSlug(planKey)}`;

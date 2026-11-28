@@ -14,12 +14,13 @@ import {
   type UserIntervention,
 } from "@astrolabe/contracts/forge";
 import type { ForgeConfig } from "../config/forge-config.js";
-import type {
-  CraftSimPort,
-  PricePort,
-  ProgressionPort,
-  SkeletonPort,
-  TargetPort,
+import {
+  commentDependents,
+  type CraftSimPort,
+  type PricePort,
+  type ProgressionPort,
+  type SkeletonPort,
+  type TargetPort,
 } from "@astrolabe/agents";
 import type { CalcPort } from "../ports/calc.js";
 import type { CatalogPort } from "../ports/catalog.js";
@@ -754,6 +755,9 @@ export class ForgeEngine {
     comment: Extract<UserIntervention, { kind: "comment" }>,
   ): Extract<UserIntervention, { kind: "comment" }> {
     const r = tx.record;
+    if (commentDependents(comment.section) === undefined) {
+      throw new ForgeError("invalid_intervention", `${comment.section} is not a guide section.`);
+    }
     if (r.phase === "failed") {
       throw new ForgeError("run_finished", `Run ${r.runId} failed; redo the failed stage first.`);
     }
@@ -777,13 +781,15 @@ export class ForgeEngine {
       if (guide !== undefined) r.revisions.push(guide);
       tx.setPhase("planning");
     }
-    // The comment's section is redone; validation and publishing run again on the new text.
+    // The section is redone, with what is computed from it; validation and publishing run again.
+    const dropped = new Set(commentDependents(comment.section));
     r.results = Object.fromEntries(
       Object.entries(r.results).filter(
-        ([key, result]) =>
-          key !== comment.section && (stageNumber(result.type) ?? -1) < VALIDATION_STAGE,
+        ([key, result]) => !dropped.has(key) && (stageNumber(result.type) ?? -1) < VALIDATION_STAGE,
       ),
     );
+    // A running price job computed from the old strategy; its answer must not come back.
+    if (dropped.has("S8.plan")) this.jobs.delete(r.runId);
     r.returns = {};
     // Findings returned to this section belong to the text that is gone; those of others stay.
     r.returned = Object.fromEntries(
