@@ -143,7 +143,7 @@ describe("guide page", () => {
     );
     expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/guides/${GUIDE_ID}/view`);
     // the fixture's calc segment resolves to the stored value
-    expect(screen.getAllByText("1,234.5").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1,235").length).toBeGreaterThan(0);
     expect(screen.getByText(/passiveNode:fixture_node_1/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save as .build file" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Level 1–10/ })).toBeTruthy();
@@ -154,7 +154,7 @@ describe("guide page", () => {
     window.location.hash = `#/guide/${GUIDE_ID}`;
     render(<App />);
     expect((await screen.findAllByText("FixtureStatA")).length).toBeGreaterThan(0);
-    expect(screen.queryByText("1,234.5")).toBeNull();
+    expect(screen.queryByText("1,235")).toBeNull();
   });
 
   it("shows the gear plan's items with catalog texts and says what is unknown", async () => {

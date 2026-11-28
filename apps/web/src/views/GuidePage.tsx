@@ -141,7 +141,7 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
     ...(guide.research.length > 0 ? [{ id: "guide-sources", label: "Sources" }] : []),
   ];
   return (
-    <div className="page guide-page">
+    <div className="page page--guide guide-page">
       <GuideNav sections={nav} />
       <div className="guide-main">
         <StageBar stages={sortedStages} value={stageKey} onChange={setStageKey} />
@@ -220,7 +220,7 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
           <PowerCurve view={view} />
           <SectionComments sectionKey="S9.summary" label="Overview" />
         </section>
-        <section id="guide-mechanics" className="guide-section" tabIndex={-1}>
+        <section id="guide-mechanics" className="guide-section guide-prose" tabIndex={-1}>
           <Panel title="How it works" kicker="Mechanics" variant="recessed">
             <GuideNotes>
               <p>
@@ -300,24 +300,44 @@ function GuideBody({ view, guideId }: { view: GuideView; guideId: string }) {
             }}
           />
         </section>
-        <section id="guide-playstyle" className="guide-section" tabIndex={-1}>
+        <section
+          id="guide-playstyle"
+          className="guide-section guide-section--flow guide-prose"
+          tabIndex={-1}
+        >
           <PlaystyleSection view={view} />
           <SectionComments sectionKey="S9.playstyle" label="Playstyle" />
         </section>
-        <section id="guide-atlas" className="guide-section" tabIndex={-1}>
+        <section
+          id="guide-atlas"
+          className="guide-section guide-section--flow guide-prose"
+          tabIndex={-1}
+        >
           <AtlasSection view={view} />
           <SectionComments sectionKey="S9.atlas" label="Endgame" />
         </section>
-        <section id="guide-variants" className="guide-section" tabIndex={-1}>
+        <section
+          id="guide-variants"
+          className="guide-section guide-section--flow guide-prose"
+          tabIndex={-1}
+        >
           <VariantsSection view={view} />
           <SectionComments sectionKey="S9.variants" label="Variants" />
         </section>
-        <section id="guide-faq" className="guide-section" tabIndex={-1}>
+        <section
+          id="guide-faq"
+          className="guide-section guide-section--flow guide-prose"
+          tabIndex={-1}
+        >
           <FaqSection view={view} />
           <SectionComments sectionKey="S9.faq" label="Troubleshooting" />
         </section>
         {guide.research.length > 0 ? (
-          <section id="guide-sources" className="guide-section" tabIndex={-1}>
+          <section
+            id="guide-sources"
+            className="guide-section guide-section--flow guide-prose"
+            tabIndex={-1}
+          >
             <SourcesSection view={view} />
           </section>
         ) : null}

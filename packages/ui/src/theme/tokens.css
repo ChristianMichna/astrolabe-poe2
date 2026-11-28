@@ -126,6 +126,8 @@
 
   --ef-leading-tight: 1.1;
   --ef-leading-body: 1.5;
+  --ef-leading-heading: 1.25;
+  --ef-leading-prose: 1.65;
   --ef-tracking-caps: 0.18em;
   --ef-tracking-display: 0.08em;
 
@@ -152,6 +154,8 @@
 
   /* Layout */
   --ef-page-max-width: 1400px;
+  /* the guide page grows with large monitors; from the wide breakpoint it has no cap */
+  --ef-page-max-width-guide: 2600px;
   --ef-topbar-height: 72px;
   --ef-tooltip-width: 340px;
   --ef-dial-size: 360px;
