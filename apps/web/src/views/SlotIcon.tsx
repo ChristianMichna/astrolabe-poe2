@@ -49,6 +49,9 @@ const PATHS: Readonly<Record<string, readonly string[]>> = {
   generic: ["M24 6 L40 24 L24 42 L8 24 Z", "M24 15 L32 24 L24 33 L16 24 Z"],
 };
 
+/** The icon ids the layout config may name. */
+export const SLOT_ICON_IDS: readonly string[] = Object.keys(PATHS);
+
 export function SlotIcon({ icon, className }: { icon: string; className?: string }) {
   const paths = PATHS[icon] ?? PATHS["generic"] ?? [];
   return (

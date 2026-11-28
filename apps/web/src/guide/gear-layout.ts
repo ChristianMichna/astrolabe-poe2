@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SLOT_ICON_IDS } from "../views/SlotIcon";
 import raw from "../../../../config/web/gear-layout.json";
 
 /** Where each slot sits on the paper doll (config/web/gear-layout.json), checked at start-up. */
@@ -19,6 +20,11 @@ const GearLayoutConfig = z
     alternatives: z.array(z.array(z.string().min(1)).min(2)).default([]),
   })
   .superRefine((cfg, ctx) => {
+    for (const [slot, icon] of Object.entries(cfg.icons)) {
+      if (!SLOT_ICON_IDS.includes(icon)) {
+        ctx.addIssue({ code: "custom", message: `${slot} names the unknown icon ${icon}` });
+      }
+    }
     const seen = new Map<string, string>();
     const same = (a: string, b: string) =>
       cfg.alternatives.some((g) => g.includes(a) && g.includes(b));
