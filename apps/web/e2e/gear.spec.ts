@@ -104,3 +104,14 @@ test("a slot with a release image shows it, with the credit; the others keep the
   ).toBeVisible();
   await expect(page.getByText("Graphics © Grinding Gear Games")).toBeVisible();
 });
+
+test("a release image that cannot be loaded leaves the slot icon", async ({ page }) => {
+  await page.route("**/api/release-assets/**", (route) =>
+    route.fulfill({ status: 404, json: { error: { message: "No item image." } } }),
+  );
+  await page.reload();
+  await page.evaluate(() => document.fonts.ready);
+  const helmet = page.locator(".gear-cell", { hasText: "Helmet" }).first();
+  await expect(helmet.locator("svg.gear-cell__icon")).toBeVisible();
+  await expect(helmet.locator("img.gear-cell__art")).toHaveCount(0);
+});

@@ -15,7 +15,7 @@ import type { CalcPort } from "../ports/calc.js";
 import type { CatalogPort } from "../ports/catalog.js";
 
 /** The item as the catalog describes it, or null where the catalog lacks it (listed in `unresolved`). */
-function itemCard(
+export function itemCard(
   spec: ItemSpec,
   catalog: CatalogPort,
   unresolved: Set<string>,

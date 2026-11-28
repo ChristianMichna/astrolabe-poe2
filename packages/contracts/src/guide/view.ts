@@ -31,9 +31,10 @@ export const GuideItemCard = z.object({
   name: z.string().min(1).optional(),
   baseName: z.string().min(1),
   /**
-   * Inventory image of the item (a unique's own, else none) as a path inside the data release the
-   * server runs with; the server serves it at `/api/release-assets/<icon>`. Absent when the
-   * release has no image for the item; the app then shows its own slot icon.
+   * Inventory image of the item as a path inside the data release the
+   * server runs with; the server serves it at `/api/release-assets/<icon>`. A unique gets its own
+   * image only, a crafted item the image of its base. Absent when the release has no image for
+   * the item; the app then shows its own slot icon.
    */
   icon: ReleasePath.optional(),
   itemClass: ClassificationId,
