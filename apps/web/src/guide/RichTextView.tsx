@@ -1,7 +1,15 @@
 import type { RichText } from "@astrolabe/contracts/build";
 import type { GuideView } from "@astrolabe/contracts/guide";
 
-const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const WHOLE = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const ONE_DIGIT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const TWO_DIGITS = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
+/** Digits follow the size of the value: 1,150 and 61.4 and 0.35, not 1,149.87. */
+function formatNumber(value: number): string {
+  const size = Math.abs(value);
+  return (size >= 100 ? WHOLE : size >= 10 ? ONE_DIGIT : TWO_DIGITS).format(value);
+}
 
 /** Key of an entity in `GuideView.names`. */
 export const nameKey = (ref: { kind: string; id: string }): string => `${ref.kind}:${ref.id}`;
@@ -73,7 +81,7 @@ export function RichTextView({ text, view }: { text: RichText; view: GuideView }
             className="ef-numeric"
             title={`Path of Building ${result.pobVersion}, profile ${result.calcProfile}`}
           >
-            {number.format(value)}
+            {formatNumber(value)}
           </span>
         );
       })}

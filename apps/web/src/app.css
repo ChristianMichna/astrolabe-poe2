@@ -148,6 +148,12 @@ a.nav__link:hover {
   max-width: var(--ef-page-max-width);
 }
 
+/* The guide uses the width of large monitors: the page grows to a wide cap, and from there the
+   reading sections sit side by side while the wide ones (gear, tree, stages) keep the full row. */
+.page--guide {
+  max-width: var(--ef-page-max-width-guide, 2600px);
+}
+
 .page--wide {
   max-width: none;
   gap: var(--ef-space-5);
@@ -693,6 +699,33 @@ code {
   min-width: 0;
 }
 
+@media (width >= 1900px) {
+  .guide-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--ef-space-6);
+    align-items: start;
+  }
+
+  .guide-main > * {
+    grid-column: 1 / -1;
+  }
+
+  .guide-main > .guide-section--flow {
+    grid-column: auto;
+  }
+}
+
+@media (width >= 3000px) {
+  .page--guide {
+    max-width: none;
+  }
+
+  .guide-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .guide-section {
   display: grid;
   gap: var(--ef-space-4);
@@ -1076,4 +1109,39 @@ code {
 .section-comments__actions {
   display: flex;
   gap: var(--ef-space-3);
+}
+
+/* Guide prose rhythm: headings get room before and after, paragraphs and lists breathe. */
+.guide-section h3 {
+  margin: var(--ef-space-6) 0 var(--ef-space-2);
+  line-height: 1.25;
+}
+
+.guide-section h4 {
+  margin: var(--ef-space-5) 0 var(--ef-space-2);
+  line-height: 1.3;
+}
+
+.guide-section :is(h3, h4):first-child {
+  margin-top: 0;
+}
+
+.guide-section p {
+  margin: 0 0 var(--ef-space-3);
+  line-height: 1.65;
+}
+
+.guide-section :is(ul, ol) {
+  margin: 0 0 var(--ef-space-4);
+  padding-left: var(--ef-space-5);
+  line-height: 1.65;
+}
+
+.guide-section li + li {
+  margin-top: var(--ef-space-2);
+}
+
+.guide-section p:last-child,
+.guide-section :is(ul, ol):last-child {
+  margin-bottom: 0;
 }
