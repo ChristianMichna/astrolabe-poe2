@@ -71,10 +71,10 @@ export interface DatTool {
   run: TableRunner;
 }
 
-const TOOL_NAME = "pathofexile-dat";
+export const TOOL_NAME = "pathofexile-dat";
 
-/** The pinned dat tool (dependency), run as a child process with an argument array. */
-export async function resolveDatTool(): Promise<DatTool> {
+/** Where the pinned dat tool (dependency) lives: its command line entry and version. */
+export async function resolveDatCli(): Promise<{ cli: string; version: string }> {
   let entry: string;
   try {
     entry = import.meta.resolve(`${TOOL_NAME}/bundles.js`);
@@ -86,6 +86,12 @@ export async function resolveDatTool(): Promise<DatTool> {
   const pkg = z
     .object({ version: z.string().min(1) })
     .parse(JSON.parse(await readFile(pkgPath, "utf8")));
+  return { cli, version: pkg.version };
+}
+
+/** The pinned dat tool (dependency), run as a child process with an argument array. */
+export async function resolveDatTool(): Promise<DatTool> {
+  const { cli, version } = await resolveDatCli();
   const run: TableRunner = async (job) => {
     await writeFile(
       join(job.workDir, "config.json"),
@@ -115,7 +121,7 @@ export async function resolveDatTool(): Promise<DatTool> {
       );
     }
   };
-  return { name: TOOL_NAME, version: pkg.version, run };
+  return { name: TOOL_NAME, version, run };
 }
 
 export interface SchemaRecord {

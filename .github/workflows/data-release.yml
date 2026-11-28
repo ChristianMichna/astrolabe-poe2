@@ -95,12 +95,25 @@ jobs:
             exit 1
           fi
 
+      - name: Item art (inventory images of the catalog's base items)
+        run: |
+          set -o pipefail
+          # the dat tool calls `magick`; the runner image has ImageMagick 6 (`convert`) only
+          if ! command -v magick >/dev/null; then
+            sudo apt-get install -y --no-install-recommends imagemagick >/dev/null
+            command -v magick >/dev/null || sudo ln -s "$(command -v convert)" /usr/local/bin/magick
+          fi
+          node apps/data-pipeline/dist/cli.js item-art data-snapshots/current \
+            --game-data data-snapshots/current/game-data \
+            --out data-snapshots/current/item-art 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Build catalog
         run: |
           set -o pipefail
           node apps/data-pipeline/dist/cli.js catalog data-snapshots/current \
             --out data-snapshots/current/catalog \
-            --game-data data-snapshots/current/game-data 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+            --game-data data-snapshots/current/game-data \
+            --item-art data-snapshots/current/item-art 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Download the previous data release
         if: env.PREVIOUS_TAG != ''
@@ -130,7 +143,7 @@ jobs:
       - name: Pack the catalog
         run: |
           set -euo pipefail
-          # catalog only: shards, manifest, findings; raw game tables stay out (ADR-0005)
+          # catalog only: shards, manifest, findings and the item images (assets/items); raw game tables stay out (ADR-0005, ADR-0007)
           id=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("data-snapshots/current/catalog/manifest.json","utf8")).release.id)')
           expected="poe2-${GAME_VERSION}+r${REVISION}"
           [ "$id" = "$expected" ] || { echo "manifest release id '$id' differs from '$expected'" >&2; exit 1; }
@@ -178,5 +191,5 @@ jobs:
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
           gh release create "$tag" out/catalog-*.tar.gz out/catalog-*.sha256 \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Data release $id" \
-            --notes "Catalog of data release $id (SHA-256 in the attached .sha256 file). Built by .github/workflows/data-release.yml from Path of Building PoE2 data (MIT) and game-data tables read with pathofexile-dat (MIT) and the community dat-schema; docs/adr/0005. Astrolabe is an unofficial fan project, not affiliated with or endorsed by Grinding Gear Games. The release contains no game assets; findings.json lists what the pipeline could not resolve." \
+            --notes "Catalog of data release $id (SHA-256 in the attached .sha256 file). Built by .github/workflows/data-release.yml from Path of Building PoE2 data (MIT) and game-data tables read with pathofexile-dat (MIT) and the community dat-schema; docs/adr/0005. Astrolabe is an unofficial fan project, not affiliated with or endorsed by Grinding Gear Games. The inventory images of base items (assets/items) are Grinding Gear Games' art, shown with the credit 'Graphics © Grinding Gear Games' (ADR-0007); findings.json lists what the pipeline could not resolve." \
             "${flags[@]}"

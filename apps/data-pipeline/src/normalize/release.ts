@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   CATALOG_SCHEMA_VERSION,
@@ -7,6 +7,7 @@ import {
 } from "@astrolabe/contracts/catalog";
 import { z } from "zod";
 import type { Json } from "../json.ts";
+import { ITEM_ART_RELEASE_DIR, readItemArtIndex } from "../gamedata/item-art.ts";
 import { prepareOutDir } from "../out-dir.ts";
 import { readManifest, readShard, sha256 } from "../snapshot/snapshot.ts";
 import {
@@ -77,7 +78,7 @@ export async function buildCatalog(
   outDir: string,
   cfg: { config: NormalizeConfig; sha256: string },
   now: Date = new Date(),
-  extra: { gameDataDir?: string } = {},
+  extra: { gameDataDir?: string; itemArtDir?: string } = {},
 ): Promise<CatalogBuildResult> {
   const snap = await readManifest(snapshotDir);
   const pipelineRevision = pipelineRevisionOf(snap.releaseId);
@@ -125,6 +126,35 @@ export async function buildCatalog(
       kind: "currency",
       id: "all",
       message: "no game data given, currency items are left out",
+    });
+  }
+  const itemArtFindings: Finding[] = [];
+  const artFiles: string[] = [];
+  if (extra.itemArtDir === undefined) {
+    itemArtFindings.push({
+      kind: "itemArt",
+      id: "all",
+      message: "no item art given, base items have no icon",
+    });
+  } else {
+    const art = await readItemArtIndex(extra.itemArtDir);
+    norm.entities.baseItem = norm.entities.baseItem.map((b) => {
+      const file = art.items[String(b.name)];
+      if (file === undefined) return b;
+      artFiles.push(file);
+      return { ...b, icon: `${ITEM_ART_RELEASE_DIR}/${file}` };
+    });
+    const withIcon = artFiles.length;
+    norm.entities.uniqueItem = norm.entities.uniqueItem.map((u) => {
+      const file = art.uniques[String(u.name)];
+      if (file === undefined) return u;
+      artFiles.push(file);
+      return { ...u, icon: `${ITEM_ART_RELEASE_DIR}/${file}` };
+    });
+    itemArtFindings.push({
+      kind: "itemArt",
+      id: "all",
+      message: `${String(withIcon)} of ${String(norm.entities.baseItem.length)} base items and ${String(artFiles.length - withIcon)} of ${String(norm.entities.uniqueItem.length)} uniques have an icon (${String(art.failed.length)} listed in the item-art index)`,
     });
   }
   const essenceFindings: Finding[] = [];
@@ -227,6 +257,7 @@ export async function buildCatalog(
           ...currencyFindings,
           ...essenceFindings,
           ...gameIdFindings,
+          ...itemArtFindings,
         ],
         unresolved: norm.unresolved,
         hiddenStatGroups: norm.hiddenStatGroups,
@@ -243,6 +274,13 @@ export async function buildCatalog(
     throw new Error(
       `catalog for ${snap.releaseId} has ${String(errors.length)} errors (see ${FINDINGS_FILE}):\n${sample}`,
     );
+  }
+
+  if (extra.itemArtDir !== undefined && artFiles.length > 0) {
+    const dir = join(out, ITEM_ART_RELEASE_DIR);
+    await mkdir(dir, { recursive: true });
+    for (const file of new Set(artFiles))
+      await copyFile(join(resolve(extra.itemArtDir), file), join(dir, file));
   }
 
   const shards: CatalogManifest["shards"] = [];
@@ -293,6 +331,7 @@ export async function buildCatalog(
       ...currencyFindings,
       ...essenceFindings,
       ...gameIdFindings,
+      ...itemArtFindings,
     ],
     summary: {
       ...norm.summary,

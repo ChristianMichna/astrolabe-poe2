@@ -374,3 +374,14 @@ alles erledigt ist.
 
 Der Watcher meldet nur. Pin-Anhebung und Veröffentlichung bleiben Entscheidungen von Menschen: Daten-Releases sind
 unveränderlich, und ein PoB-Wechsel braucht den Vergleich der Golden Builds.
+
+## Item-Grafiken (F-30, ADR-0007)
+
+`astrolabe-data item-art <snapshotDir> --game-data <dir> --out <dir>` liest je Basis-Item des
+Snapshots das Inventarbild (`ItemVisualIdentity.DDSFile`) aus den Patch-Bundles und schreibt
+PNGs plus `index.json` (Name → Datei, `failed` mit Grund). Nur in CI; braucht ImageMagick
+(`magick`). Der Werkzeuglauf bricht beim ersten nicht umwandelbaren Bild ab, deshalb wird ein
+fehlschlagender Lauf halbiert, bis die einzelnen Dateien feststehen. Mehr als
+`itemArt.maxFailedShare` (`game-data.json`) ohne Bild lässt den Schritt scheitern.
+`catalog --item-art <dir>` setzt `BaseItem.icon` (`assets/items/<datei>`) und kopiert die Bilder
+ins Release; ohne Bild bleibt das Feld leer und `findings.json` nennt es.
